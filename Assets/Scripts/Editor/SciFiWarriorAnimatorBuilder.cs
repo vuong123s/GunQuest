@@ -69,6 +69,14 @@ public static class SciFiWarriorAnimatorBuilder
         }
 
         AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
+        // A controller whose Base Layer has no state machine is corrupt.  It cannot
+        // be repaired in-place because AnimatorController.layers is read-only.
+        if (controller != null && !HasValidBaseLayer(controller))
+        {
+            AssetDatabase.DeleteAsset(controllerPath);
+            controller = null;
+        }
+
         if (controller == null)
         {
             controller = AnimatorController.CreateAnimatorControllerAtPath(controllerPath);
@@ -104,6 +112,16 @@ public static class SciFiWarriorAnimatorBuilder
 
         AnimatorState jumpState = root.AddState("Jump", new Vector3(540f, 0f, 0f));
         jumpState.motion = jump;
+
+        // Keep every animation supplied by the character pack available to the
+        // player.  Gameplay scripts can request any of these states through
+        // PlayerMotor.PlayAnimation("ClipName").
+        AddAdditionalAnimationStates(root, locomotion, new[]
+        {
+            "Idle_Guard_AR", "WalkFront_Shoot_AR", "WalkBack_Shoot_AR",
+            "WalkLeft_Shoot_AR", "WalkRight_Shoot_AR", "Run_guard_AR",
+            "Idle_Ducking_AR", "Jump"
+        });
 
         AddTransition(locomotion, runState, 0.12f, false,
             Condition(AnimatorConditionMode.If, "IsSprinting"),
@@ -171,6 +189,39 @@ public static class SciFiWarriorAnimatorBuilder
 
         root.entryTransitions = new AnimatorTransition[0];
         root.defaultState = null;
+    }
+
+    private static bool HasValidBaseLayer(AnimatorController controller)
+    {
+        return controller.layers != null && controller.layers.Length > 0 &&
+               controller.layers[0].stateMachine != null;
+    }
+
+    private static void AddAdditionalAnimationStates(
+        AnimatorStateMachine root,
+        AnimatorState locomotion,
+        string[] alreadyUsed)
+    {
+        var usedNames = new System.Collections.Generic.HashSet<string>(alreadyUsed,
+            System.StringComparer.OrdinalIgnoreCase);
+        string[] guids = AssetDatabase.FindAssets("t:AnimationClip", new[] { AnimationsRoot });
+        int row = 0;
+
+        foreach (string guid in guids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+            if (clip == null || usedNames.Contains(clip.name))
+            {
+                continue;
+            }
+
+            AnimatorState state = root.AddState(clip.name, new Vector3(760f, row++ * 75f, 0f));
+            state.motion = clip;
+
+            // Action clips return to normal locomotion after playing once.
+            AddTransition(state, locomotion, 0.12f, true);
+        }
     }
 
     private static BlendTree CreateLocomotionBlendTree(

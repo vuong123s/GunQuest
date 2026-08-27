@@ -9,7 +9,15 @@
         { "name": "Look", "type": "Value", "id": "194f01b4-2d71-4211-9430-3a0e0b41e579", "expectedControlType": "Vector2", "processors": "", "interactions": "", "initialStateCheck": true },
         { "name": "Jump", "type": "Button", "id": "9b9639d6-e378-496c-aa32-e4f616db3915", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
         { "name": "Crouch", "type": "Button", "id": "66c83147-d3a2-471c-b0b5-88566a9b1771", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
-        { "name": "Sprint", "type": "Button", "id": "174e06ce-5bd4-4e84-8203-b8671fd37d26", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false }
+        { "name": "Sprint", "type": "Button", "id": "174e06ce-5bd4-4e84-8203-b8671fd37d26", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+        { "name": "IdleGunMiddle", "type": "Button", "id": "7ce316bb-0ed8-41d7-9c34-06191a56ad61", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+        { "name": "IdleShoot", "type": "Button", "id": "9c6adac4-4b4a-40dc-92d2-1eec06a21002", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+        { "name": "Reload", "type": "Button", "id": "f4113e99-dfad-4b4d-a063-c463593a6cf0", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+        { "name": "RunGunMiddle", "type": "Button", "id": "bd6c2f54-7e55-4fd7-a694-4b5d077f541f", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+        { "name": "ShootAuto", "type": "Button", "id": "92a70a0a-686f-4bd1-96bd-7b663962d7d1", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+        { "name": "ShootBurst", "type": "Button", "id": "7de446f2-bf3e-4041-a233-2a38d158d593", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+        { "name": "ShootSingle", "type": "Button", "id": "df61257d-e158-41d8-82e1-82fe36aebf4e", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+        { "name": "Die", "type": "Button", "id": "437a7e59-42b6-40ef-b1ce-dda31fa4da7b", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false }
       ],
       "bindings": [
         { "name": "WASD", "id": "f7269f7c-3153-4f02-86b3-7df8712c56d7", "path": "2DVector", "interactions": "", "processors": "", "groups": "", "action": "Movement", "isComposite": true, "isPartOfComposite": false },
@@ -25,7 +33,15 @@
         { "name": "", "id": "7148c9f0-25f6-4c94-ab29-0932f76a948b", "path": "<Keyboard>/leftCtrl", "interactions": "", "processors": "", "groups": "", "action": "Crouch", "isComposite": false, "isPartOfComposite": false },
         { "name": "", "id": "92e77f2a-6be2-4562-a365-2c43fccb95b6", "path": "<Gamepad>/buttonEast", "interactions": "", "processors": "", "groups": "", "action": "Crouch", "isComposite": false, "isPartOfComposite": false },
         { "name": "", "id": "934dcaec-91ec-4bd0-a0ef-8fd2c47b0489", "path": "<Keyboard>/leftShift", "interactions": "", "processors": "", "groups": "", "action": "Sprint", "isComposite": false, "isPartOfComposite": false },
-        { "name": "", "id": "dd9a9028-c4ed-42a4-8016-8c33460424bf", "path": "<Gamepad>/leftStickPress", "interactions": "", "processors": "", "groups": "", "action": "Sprint", "isComposite": false, "isPartOfComposite": false }
+        { "name": "", "id": "dd9a9028-c4ed-42a4-8016-8c33460424bf", "path": "<Gamepad>/leftStickPress", "interactions": "", "processors": "", "groups": "", "action": "Sprint", "isComposite": false, "isPartOfComposite": false },
+        { "name": "", "id": "0eaf9570-6353-4ec0-83ef-565e54cf3119", "path": "<Keyboard>/digit1", "interactions": "", "processors": "", "groups": "", "action": "IdleGunMiddle", "isComposite": false, "isPartOfComposite": false },
+        { "name": "", "id": "1677bd60-8800-4470-91f8-3be0418bd1c2", "path": "<Keyboard>/digit2", "interactions": "", "processors": "", "groups": "", "action": "IdleShoot", "isComposite": false, "isPartOfComposite": false },
+        { "name": "", "id": "b725f5d4-a72b-45cb-b349-517d20ce72a2", "path": "<Keyboard>/r", "interactions": "", "processors": "", "groups": "", "action": "Reload", "isComposite": false, "isPartOfComposite": false },
+        { "name": "", "id": "50d6b6e0-d527-4fb2-af8a-e29f56468c0d", "path": "<Keyboard>/digit3", "interactions": "", "processors": "", "groups": "", "action": "RunGunMiddle", "isComposite": false, "isPartOfComposite": false },
+        { "name": "", "id": "39cb2d86-2dd7-4d16-87db-ffb0c7512506", "path": "<Keyboard>/digit4", "interactions": "", "processors": "", "groups": "", "action": "ShootAuto", "isComposite": false, "isPartOfComposite": false },
+        { "name": "", "id": "5c379c4a-e75c-4f5c-85af-84105c257775", "path": "<Keyboard>/digit5", "interactions": "", "processors": "", "groups": "", "action": "ShootBurst", "isComposite": false, "isPartOfComposite": false },
+        { "name": "", "id": "3262dc08-a9b5-40f3-a72e-51ff2b56d85c", "path": "<Keyboard>/digit6", "interactions": "", "processors": "", "groups": "", "action": "ShootSingle", "isComposite": false, "isPartOfComposite": false },
+        { "name": "", "id": "a2de058d-31c2-4f8e-bcc4-40e13648d8a0", "path": "<Keyboard>/k", "interactions": "", "processors": "", "groups": "", "action": "Die", "isComposite": false, "isPartOfComposite": false }
       ]
     }
   ],

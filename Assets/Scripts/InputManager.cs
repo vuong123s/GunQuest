@@ -57,11 +57,19 @@ public class InputManager : MonoBehaviour
             }
         };
 
-        onFoot.Sprint.performed += ctx =>
+        onFoot.Sprint.started += ctx =>
         {
             if (motor != null)
             {
-                motor.Sprint();
+                motor.SetSprinting(true);
+            }
+        };
+
+        onFoot.Sprint.canceled += ctx =>
+        {
+            if (motor != null)
+            {
+                motor.SetSprinting(false);
             }
         };
 
@@ -75,11 +83,25 @@ public class InputManager : MonoBehaviour
 
         onFoot.Fire.performed += ctx =>
         {
+            if (motor != null)
+            {
+                motor.PlayAnimation("Shoot_Autoshot_AR");
+            }
+
             if (shoot != null)
             {
                 shoot.Shoot();
             }
         };
+
+        onFoot.IdleGunMiddle.performed += ctx => PlayAnimation("Idle_gunMiddle_AR");
+        onFoot.IdleShoot.performed += ctx => PlayAnimation("Idle_Shoot_Ar");
+        onFoot.Reload.performed += ctx => PlayAnimation("Reload");
+        onFoot.RunGunMiddle.performed += ctx => PlayAnimation("Run_gunMiddle_AR");
+        onFoot.ShootAuto.performed += ctx => PlayAnimation("Shoot_Autoshot_AR");
+        onFoot.ShootBurst.performed += ctx => PlayAnimation("Shoot_BurstShot_AR");
+        onFoot.ShootSingle.performed += ctx => PlayAnimation("Shoot_SingleShot_AR");
+        onFoot.Die.performed += ctx => PlayAnimation("Die");
     }
 
     void FixedUpdate()
@@ -108,5 +130,13 @@ public class InputManager : MonoBehaviour
     private void OnDisable()
     {
         onFoot.Disable(); // Hủy kích hoạt Action Map [5]
+    }
+
+    private void PlayAnimation(string stateName)
+    {
+        if (motor != null)
+        {
+            motor.PlayAnimation(stateName);
+        }
     }
 }

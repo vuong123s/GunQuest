@@ -938,7 +938,9 @@ PlayerSettings:
   qnxGraphicConfPath: 
   apiCompatibilityLevel: 6
   captureStartupLogs: {}
-  activeInputHandler: 1
+  # Use both input backends: the player uses the new Input System while
+  # imported demo/UI assets still call the legacy UnityEngine.Input API.
+  activeInputHandler: 2
   windowsGamepadBackendHint: 0
   cloudProjectId: ca66de02-3e85-4df2-bfed-afaa7338340d
   framebufferDepthMemorylessMode: 0

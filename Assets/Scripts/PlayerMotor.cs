@@ -12,6 +12,7 @@ public class PlayerMotor : MonoBehaviour
     private bool lerpCrouch;
     private bool crouching;
     private bool sprinting;
+    private bool animatorSprinting;
     private bool jumpAnimationActive;
     private bool leftGroundAfterJump;
     private float crouchTimer;
@@ -57,7 +58,7 @@ public class PlayerMotor : MonoBehaviour
         isGrounded = controller.isGrounded;
         SetAnimatorBool(IsGroundedHash, isGrounded);
         SetAnimatorBool(IsCrouchingHash, crouching);
-        SetAnimatorBool(IsSprintingHash, sprinting);
+        SetAnimatorBool(IsSprintingHash, animatorSprinting);
         UpdateJumpAnimationLock();
 
         if (lerpCrouch)
@@ -131,6 +132,28 @@ public class PlayerMotor : MonoBehaviour
         sprinting = !sprinting;
     }
 
+    public void SetSprinting(bool isSprinting)
+    {
+        sprinting = isSprinting;
+    }
+
+    /// <summary>
+    /// Plays any state created from the SciFiWarrior animation pack, for example
+    /// "Reload", "Shoot_Autoshot_AR", "Die" or "Idle_gunMiddle_ar".
+    /// </summary>
+    public void PlayAnimation(string stateName, float fadeDuration = -1f)
+    {
+        if (animator == null || string.IsNullOrWhiteSpace(stateName))
+        {
+            return;
+        }
+
+        animator.CrossFadeInFixedTime(
+            Animator.StringToHash(GetAnimatorStateName(stateName)),
+            fadeDuration >= 0f ? fadeDuration : animationFadeDuration,
+            0);
+    }
+
     private void CacheAnimatorParameters()
     {
         animatorParameters.Clear();
@@ -151,11 +174,13 @@ public class PlayerMotor : MonoBehaviour
         float speed01 = maxSpeed <= 0f ? 0f : currentMoveSpeed / maxSpeed;
         bool isMoving = input.sqrMagnitude > 0.01f;
         float animationSpeed = sprinting && isMoving ? sprintAnimationSpeed : walkAnimationSpeed;
+        animatorSprinting = sprinting && isMoving && input.y > 0.5f && Mathf.Abs(input.x) < 0.5f;
 
         SetAnimatorFloat(MoveXHash, input.x, animationDampTime);
         SetAnimatorFloat(MoveYHash, input.y, animationDampTime);
         SetAnimatorFloat(SpeedHash, isMoving ? animationSpeed : 1f, animationDampTime);
         SetAnimatorBool(IsMovingHash, isMoving);
+        SetAnimatorBool(IsSprintingHash, animatorSprinting);
         UpdateDirectAnimatorState(speed01);
     }
 
@@ -241,7 +266,7 @@ public class PlayerMotor : MonoBehaviour
         }
 
         AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-        int stateHash = Animator.StringToHash(stateName);
+        int stateHash = Animator.StringToHash(GetAnimatorStateName(stateName));
 
         if (stateInfo.shortNameHash == stateHash && !animator.IsInTransition(0))
         {
@@ -254,6 +279,11 @@ public class PlayerMotor : MonoBehaviour
         }
 
         animator.CrossFadeInFixedTime(stateHash, animationFadeDuration);
+    }
+
+    private string GetAnimatorStateName(string stateName)
+    {
+        return stateName == "Shoot_AutoShot_AR" ? "Shoot_Autoshot_AR" : stateName;
     }
 
     private Vector3 GetControllerCenter(float height)
