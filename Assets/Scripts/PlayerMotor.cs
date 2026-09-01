@@ -15,6 +15,7 @@ public class PlayerMotor : MonoBehaviour
     private bool animatorSprinting;
     private bool jumpAnimationActive;
     private bool leftGroundAfterJump;
+    private float actionAnimationLockUntil;
     private float crouchTimer;
     private float currentMoveSpeed;
 
@@ -26,14 +27,24 @@ public class PlayerMotor : MonoBehaviour
     public float gravity = -9.8f;
     public float jumpHeight = 3f;
     public Animator characterAnimator;
-    public string idleStateName = "Idle_Guard_AR";
-    public string walkStateName = "WalkFront_Shoot_AR";
-    public string runStateName = "Run_guard_AR";
-    public string jumpStateName = "Jump";
+    public string idleStateName = "IdleOneWeapon";
+    public string walkStateName = "WalkFWDOneWeapon_IP";
+    public string walkBackStateName = "WalkBWDOneWeapon_IP";
+    public string walkLeftStateName = "WalkLFTOneWeapon_IP";
+    public string walkRightStateName = "WalkRGTOneWeapon_IP";
+    public string runStateName = "RunFWDOneWeapon_IP";
+    public string jumpStateName = "JumpFullOneWeapon_IP";
+    public string shootStateName = "ShootSingleshotOneWeapon";
+    public string meleeStateName = "MeleeVerticalOneWeapon";
+    public string hitStateName = "GetHitOneWeapon";
+    public string dieStateName = "DieOneWeapon";
     public float animationFadeDuration = 0.1f;
     public float animationDampTime = 0.1f;
     public float sprintAnimationSpeed = 1.35f;
     public float walkAnimationSpeed = 1f;
+    public float rotationSharpness = 16f;
+    public float shootAnimationLockDuration = 0.12f;
+    public float meleeAnimationLockDuration = 0.55f;
 
     private static readonly int MoveXHash = Animator.StringToHash("MoveX");
     private static readonly int MoveYHash = Animator.StringToHash("MoveY");
@@ -84,16 +95,20 @@ public class PlayerMotor : MonoBehaviour
     // Nhận đầu vào từ InputManager và áp dụng vào CharacterController [5, 8]
     public void ProcessMove(Vector2 input)
     {
-        Vector3 moveDirection = Vector3.zero;
-        moveDirection.x = input.x;
-        moveDirection.z = input.y;
-        moveDirection = Vector3.ClampMagnitude(moveDirection, 1f);
+        Vector3 moveDirection = GetCameraRelativeMoveDirection(input);
 
         // Di chuyển nhân vật dựa trên hướng nhìn [8]
         float currentSpeed = sprinting && !crouching ? sprintSpeed : speed;
-        controller.Move(transform.TransformDirection(moveDirection) * currentSpeed * Time.deltaTime);
+        controller.Move(moveDirection * currentSpeed * Time.deltaTime);
         currentMoveSpeed = moveDirection.magnitude * currentSpeed;
         UpdateMovementAnimator(input, currentSpeed);
+
+        if (moveDirection.sqrMagnitude > 0.001f)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
+            float blend = 1f - Mathf.Exp(-rotationSharpness * Time.deltaTime);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, blend);
+        }
 
         // Áp dụng trọng lực [6, 7]
         playerVelocity.y += gravity * Time.deltaTime;
@@ -102,6 +117,21 @@ public class PlayerMotor : MonoBehaviour
             playerVelocity.y = -2f; // Giữ nhân vật bám trên mặt đất
         }
         controller.Move(playerVelocity * Time.deltaTime);
+    }
+
+    private Vector3 GetCameraRelativeMoveDirection(Vector2 input)
+    {
+        Vector3 forward = transform.forward;
+        Vector3 right = transform.right;
+        Camera activeCamera = Camera.main;
+
+        if (activeCamera != null)
+        {
+            forward = Vector3.ProjectOnPlane(activeCamera.transform.forward, Vector3.up).normalized;
+            right = Vector3.ProjectOnPlane(activeCamera.transform.right, Vector3.up).normalized;
+        }
+
+        return Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
     }
 
     public void Jump()
@@ -154,6 +184,22 @@ public class PlayerMotor : MonoBehaviour
             0);
     }
 
+    public void PlayShootAnimation()
+    {
+        PlayActionAnimation(shootStateName, shootAnimationLockDuration);
+    }
+
+    public void PlayMeleeAnimation()
+    {
+        PlayActionAnimation(meleeStateName, meleeAnimationLockDuration);
+    }
+
+    private void PlayActionAnimation(string stateName, float lockDuration)
+    {
+        actionAnimationLockUntil = Mathf.Max(actionAnimationLockUntil, Time.time + lockDuration);
+        PlayAnimation(stateName);
+    }
+
     private void CacheAnimatorParameters()
     {
         animatorParameters.Clear();
@@ -171,7 +217,6 @@ public class PlayerMotor : MonoBehaviour
 
     private void UpdateMovementAnimator(Vector2 input, float maxSpeed)
     {
-        float speed01 = maxSpeed <= 0f ? 0f : currentMoveSpeed / maxSpeed;
         bool isMoving = input.sqrMagnitude > 0.01f;
         float animationSpeed = sprinting && isMoving ? sprintAnimationSpeed : walkAnimationSpeed;
         animatorSprinting = sprinting && isMoving && input.y > 0.5f && Mathf.Abs(input.x) < 0.5f;
@@ -181,7 +226,7 @@ public class PlayerMotor : MonoBehaviour
         SetAnimatorFloat(SpeedHash, isMoving ? animationSpeed : 1f, animationDampTime);
         SetAnimatorBool(IsMovingHash, isMoving);
         SetAnimatorBool(IsSprintingHash, animatorSprinting);
-        UpdateDirectAnimatorState(speed01);
+        UpdateDirectAnimatorState(input);
     }
 
     private void SetAnimatorFloat(int parameterHash, float value, float dampTime = 0f)
@@ -222,20 +267,21 @@ public class PlayerMotor : MonoBehaviour
         return animator != null && animatorParameters.Contains(parameterHash);
     }
 
-    private void UpdateDirectAnimatorState(float speed01)
+    private void UpdateDirectAnimatorState(Vector2 input)
     {
-        if (animator == null || animatorParameters.Count > 0 || jumpAnimationActive || !isGrounded)
+        if (animator == null || animatorParameters.Count > 0 || jumpAnimationActive ||
+            Time.time < actionAnimationLockUntil || !isGrounded)
         {
             return;
         }
 
-        if (speed01 <= 0.05f)
+        if (input.sqrMagnitude <= 0.01f)
         {
             PlayAnimatorState(idleStateName);
             return;
         }
 
-        PlayAnimatorState(sprinting ? runStateName : walkStateName);
+        PlayAnimatorState(GetMovementStateName(input));
     }
 
     private void UpdateJumpAnimationLock()
@@ -283,7 +329,56 @@ public class PlayerMotor : MonoBehaviour
 
     private string GetAnimatorStateName(string stateName)
     {
-        return stateName == "Shoot_AutoShot_AR" ? "Shoot_Autoshot_AR" : stateName;
+        switch (stateName)
+        {
+            case "Idle_Guard_AR":
+            case "Idle_gunMiddle_AR":
+            case "Idle_gunMiddle_ar":
+            case "Idle_Shoot_Ar":
+                return idleStateName;
+            case "WalkFront_Shoot_AR":
+                return walkStateName;
+            case "WalkBack_Shoot_AR":
+                return walkBackStateName;
+            case "WalkLeft_Shoot_AR":
+                return walkLeftStateName;
+            case "WalkRight_Shoot_AR":
+                return walkRightStateName;
+            case "Run_guard_AR":
+            case "Run_gunMiddle_AR":
+                return runStateName;
+            case "Jump":
+                return jumpStateName;
+            case "Shoot_AutoShot_AR":
+            case "Shoot_Autoshot_AR":
+            case "Shoot_BurstShot_AR":
+            case "Shoot_SingleShot_AR":
+                return shootStateName;
+            case "Melee":
+            case "Attack":
+                return meleeStateName;
+            case "GetHit":
+                return hitStateName;
+            case "Die":
+                return dieStateName;
+            default:
+                return stateName;
+        }
+    }
+
+    private string GetMovementStateName(Vector2 input)
+    {
+        if (sprinting && input.y > 0.5f && Mathf.Abs(input.x) < 0.5f)
+        {
+            return runStateName;
+        }
+
+        if (Mathf.Abs(input.x) > Mathf.Abs(input.y))
+        {
+            return input.x < 0f ? walkLeftStateName : walkRightStateName;
+        }
+
+        return input.y < 0f ? walkBackStateName : walkStateName;
     }
 
     private Vector3 GetControllerCenter(float height)

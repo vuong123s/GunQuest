@@ -11,6 +11,8 @@ public class InputManager : MonoBehaviour
     private PlayerLook look;
     private PlayerInteract interact;
     private PlayerShoot shoot;
+    private PlayerMelee melee;
+    private bool firing;
 
     public InputActions.OnFootActions OnFoot => onFoot;
 
@@ -24,10 +26,16 @@ public class InputManager : MonoBehaviour
         look = GetComponent<PlayerLook>();
         interact = GetComponent<PlayerInteract>();
         shoot = GetComponent<PlayerShoot>();
+        melee = GetComponent<PlayerMelee>();
 
         if (look == null)
         {
             look = GetComponentInChildren<PlayerLook>();
+        }
+
+        if (GetComponent<PlayerCameraFollow>() == null)
+        {
+            gameObject.AddComponent<PlayerCameraFollow>();
         }
 
         if (interact == null)
@@ -38,6 +46,11 @@ public class InputManager : MonoBehaviour
         if (shoot == null)
         {
             shoot = gameObject.AddComponent<PlayerShoot>();
+        }
+
+        if (melee == null)
+        {
+            melee = gameObject.AddComponent<PlayerMelee>();
         }
 
         // Đăng ký sự kiện Jump khi hành động được thực hiện [3]
@@ -81,18 +94,9 @@ public class InputManager : MonoBehaviour
             }
         };
 
-        onFoot.Fire.performed += ctx =>
-        {
-            if (motor != null)
-            {
-                motor.PlayAnimation("Shoot_Autoshot_AR");
-            }
-
-            if (shoot != null)
-            {
-                shoot.Shoot();
-            }
-        };
+        onFoot.Fire.started += ctx => firing = true;
+        onFoot.Fire.canceled += ctx => firing = false;
+        onFoot.Melee.performed += ctx => PerformMelee();
 
         onFoot.IdleGunMiddle.performed += ctx => PlayAnimation("Idle_gunMiddle_AR");
         onFoot.IdleShoot.performed += ctx => PlayAnimation("Idle_Shoot_Ar");
@@ -102,6 +106,19 @@ public class InputManager : MonoBehaviour
         onFoot.ShootBurst.performed += ctx => PlayAnimation("Shoot_BurstShot_AR");
         onFoot.ShootSingle.performed += ctx => PlayAnimation("Shoot_SingleShot_AR");
         onFoot.Die.performed += ctx => PlayAnimation("Die");
+    }
+
+    void Update()
+    {
+        if (!firing || shoot == null)
+        {
+            return;
+        }
+
+        if (shoot.Shoot() && motor != null)
+        {
+            motor.PlayShootAnimation();
+        }
     }
 
     void FixedUpdate()
@@ -137,6 +154,14 @@ public class InputManager : MonoBehaviour
         if (motor != null)
         {
             motor.PlayAnimation(stateName);
+        }
+    }
+
+    private void PerformMelee()
+    {
+        if (melee != null && melee.Attack() && motor != null)
+        {
+            motor.PlayMeleeAnimation();
         }
     }
 }

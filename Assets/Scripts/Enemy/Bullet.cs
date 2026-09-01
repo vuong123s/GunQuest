@@ -71,5 +71,15 @@ public class Bullet : MonoBehaviour
     public void SetOwner(Transform newOwner)
     {
         owner = newOwner;
+        Collider bulletCollider = GetComponent<Collider>();
+        if (bulletCollider == null || owner == null)
+        {
+            return;
+        }
+
+        foreach (Collider ownerCollider in owner.GetComponentsInChildren<Collider>())
+        {
+            Physics.IgnoreCollision(bulletCollider, ownerCollider, true);
+        }
     }
 }

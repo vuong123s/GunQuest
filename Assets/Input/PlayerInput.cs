@@ -16,6 +16,7 @@ namespace GunQuest.Input
         private readonly InputAction sprint;
         private readonly InputAction interact;
         private readonly InputAction fire;
+        private readonly InputAction melee;
         private readonly InputAction idleGunMiddle;
         private readonly InputAction idleShoot;
         private readonly InputAction reload;
@@ -62,6 +63,11 @@ namespace GunQuest.Input
             fire.AddBinding("<Mouse>/leftButton");
             fire.AddBinding("<Gamepad>/rightTrigger");
 
+            melee = onFoot.AddAction("Melee", InputActionType.Button, expectedControlLayout: "Button");
+            melee.AddBinding("<Keyboard>/f");
+            melee.AddBinding("<Mouse>/rightButton");
+            melee.AddBinding("<Gamepad>/rightShoulder");
+
             idleGunMiddle = onFoot.AddAction("IdleGunMiddle", InputActionType.Button, expectedControlLayout: "Button");
             idleGunMiddle.AddBinding("<Keyboard>/digit1");
 
@@ -100,6 +106,7 @@ namespace GunQuest.Input
             public InputAction Sprint => wrapper.sprint;
             public InputAction Interact => wrapper.interact;
             public InputAction Fire => wrapper.fire;
+            public InputAction Melee => wrapper.melee;
             public InputAction IdleGunMiddle => wrapper.idleGunMiddle;
             public InputAction IdleShoot => wrapper.idleShoot;
             public InputAction Reload => wrapper.reload;
