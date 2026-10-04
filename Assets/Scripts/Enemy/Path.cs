@@ -9,7 +9,7 @@ public class Path : MonoBehaviour
     [SerializeField]
     private Color pathColor = Color.green;
 
-    void OnDrawGizmos()
+    private void OnDrawGizmos()
     {
         if (alwaysDrawPath)
         {
@@ -17,7 +17,7 @@ public class Path : MonoBehaviour
         }
     }
 
-    void OnDrawGizmosSelected()
+    private void OnDrawGizmosSelected()
     {
         if (!alwaysDrawPath)
         {
@@ -36,11 +36,7 @@ public class Path : MonoBehaviour
         for (int i = 0; i < waypoints.Count; i++)
         {
             if (waypoints[i] == null) continue;
-
-            // Draw sphere at waypoint
             Gizmos.DrawSphere(waypoints[i].position, 0.4f);
-
-            // Draw line to next waypoint (connecting loop)
             int nextIndex = (i + 1) % waypoints.Count;
             if (waypoints[nextIndex] != null)
             {

@@ -2,22 +2,15 @@ using UnityEngine;
 
 public class ColorChangeCube : Interactable
 {
-    private MeshRenderer meshRenderer;
-    [SerializeField]
-    private Color[] colors = new Color[] { Color.red, Color.green, Color.blue, Color.yellow, Color.magenta, Color.cyan };
-    private int colorIndex = 0;
+    [SerializeField] private Color[] colors = { Color.red, Color.green, Color.blue, Color.yellow };
+    private Renderer targetRenderer;
+    private int colorIndex;
 
-    void Awake()
-    {
-        meshRenderer = GetComponent<MeshRenderer>();
-    }
+    private void Awake() => targetRenderer = GetComponent<Renderer>();
 
     protected override void Interact()
     {
-        if (meshRenderer != null && colors.Length > 0)
-        {
-            colorIndex = (colorIndex + 1) % colors.Length;
-            meshRenderer.material.color = colors[colorIndex];
-        }
+        if (targetRenderer == null || colors == null || colors.Length == 0) return;
+        targetRenderer.material.color = colors[colorIndex++ % colors.Length];
     }
 }

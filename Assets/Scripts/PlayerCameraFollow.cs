@@ -18,6 +18,8 @@ public class PlayerCameraFollow : MonoBehaviour
 
     private PlayerLook playerLook;
     private float currentDistance;
+    private bool cameraReady;
+    private readonly RaycastHit[] collisionHits = new RaycastHit[16];
 
     public Camera TargetCamera => targetCamera;
 
@@ -27,10 +29,6 @@ public class PlayerCameraFollow : MonoBehaviour
         ResolveCamera();
         currentDistance = Mathf.Clamp(defaultDistance, minDistance, maxDistance);
 
-        if (targetCamera != null && targetCamera.transform.IsChildOf(transform))
-        {
-            targetCamera.transform.SetParent(null, true);
-        }
     }
 
     private void LateUpdate()
@@ -87,17 +85,19 @@ public class PlayerCameraFollow : MonoBehaviour
             return desiredPosition;
         }
 
-        RaycastHit[] hits = Physics.SphereCastAll(
+        int hitCount = Physics.SphereCastNonAlloc(
             pivot,
             collisionRadius,
             castDirection / castDistance,
+            collisionHits,
             castDistance,
             collisionMask,
             QueryTriggerInteraction.Ignore);
 
         float closestDistance = castDistance;
-        foreach (RaycastHit hit in hits)
+        for (int i = 0; i < hitCount; i++)
         {
+            RaycastHit hit = collisionHits[i];
             if (hit.transform == transform || hit.transform.IsChildOf(transform))
             {
                 continue;
@@ -119,15 +119,10 @@ public class PlayerCameraFollow : MonoBehaviour
 
     private void ResolveCamera()
     {
-        if (targetCamera == null)
-        {
-            targetCamera = Camera.main;
-        }
+        if (targetCamera == null) targetCamera = Camera.main;
+        if (targetCamera == null || cameraReady) return;
 
-        if (targetCamera == null)
-        {
-            return;
-        }
+        if (targetCamera.transform.IsChildOf(transform)) targetCamera.transform.SetParent(null, true);
 
         foreach (MonoBehaviour behaviour in targetCamera.GetComponents<MonoBehaviour>())
         {
@@ -142,5 +137,7 @@ public class PlayerCameraFollow : MonoBehaviour
                 behaviour.enabled = false;
             }
         }
+
+        cameraReady = true;
     }
 }

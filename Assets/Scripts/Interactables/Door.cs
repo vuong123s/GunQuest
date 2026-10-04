@@ -2,37 +2,23 @@ using UnityEngine;
 
 public class Door : Interactable
 {
-    [SerializeField]
-    private GameObject doorObject;
-    private bool doorOpen;
+    [SerializeField] private GameObject doorObject;
+    private bool isOpen;
 
-    void Awake()
+    private void Awake()
     {
-        if (doorObject == null)
-        {
-            doorObject = gameObject;
-        }
+        doorObject ??= gameObject;
         UpdatePrompt();
     }
 
     protected override void Interact()
     {
-        doorOpen = !doorOpen;
-        if (doorObject.TryGetComponent<Animator>(out Animator animator))
-        {
-            animator.SetBool("IsOpen", doorOpen);
-        }
-        else
-        {
-            // Simple rotation toggle if no Animator attached
-            doorObject.transform.Rotate(0f, doorOpen ? 90f : -90f, 0f);
-        }
-
+        isOpen = !isOpen;
+        Animator animator = doorObject.GetComponent<Animator>();
+        if (animator != null) animator.SetBool("IsOpen", isOpen);
+        else doorObject.transform.Rotate(0f, isOpen ? 90f : -90f, 0f);
         UpdatePrompt();
     }
 
-    private void UpdatePrompt()
-    {
-        promptMessage = doorOpen ? "Press E to Close Door" : "Press E to Open Door";
-    }
+    private void UpdatePrompt() => promptMessage = isOpen ? "Press E to Close Door" : "Press E to Open Door";
 }

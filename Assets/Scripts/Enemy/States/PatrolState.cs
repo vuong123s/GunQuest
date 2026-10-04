@@ -6,13 +6,7 @@ public class PatrolState : BaseState
 
     public override void Enter()
     {
-        if (enemy.path != null && enemy.path.waypoints.Count > 0)
-        {
-            if (enemy.Agent.isOnNavMesh)
-            {
-                enemy.Agent.SetDestination(enemy.path.waypoints[waypointIndex].position);
-            }
-        }
+        SetDestination();
     }
 
     public override void Perform()
@@ -31,19 +25,15 @@ public class PatrolState : BaseState
 
     public void PatrolCycle()
     {
-        if (enemy.path == null || enemy.path.waypoints.Count == 0)
-        {
-            return;
-        }
+        if (enemy.path == null || enemy.path.waypoints.Count == 0 || !enemy.Agent.isOnNavMesh || enemy.Agent.pathPending || enemy.Agent.remainingDistance >= 0.8f) return;
+        waypointIndex = (waypointIndex + 1) % enemy.path.waypoints.Count;
+        SetDestination();
+    }
 
-        // Check if agent reached current waypoint
-        if (enemy.Agent.isOnNavMesh && !enemy.Agent.pathPending && enemy.Agent.remainingDistance < 0.8f)
-        {
-            waypointIndex = (waypointIndex + 1) % enemy.path.waypoints.Count;
-            if (enemy.path.waypoints[waypointIndex] != null)
-            {
-                enemy.Agent.SetDestination(enemy.path.waypoints[waypointIndex].position);
-            }
-        }
+    private void SetDestination()
+    {
+        if (enemy.path == null || enemy.path.waypoints.Count == 0 || !enemy.Agent.isOnNavMesh) return;
+        Transform waypoint = enemy.path.waypoints[waypointIndex];
+        if (waypoint != null) enemy.Agent.SetDestination(waypoint.position);
     }
 }

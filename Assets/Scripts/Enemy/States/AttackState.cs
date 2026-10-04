@@ -2,15 +2,15 @@ using UnityEngine;
 
 public class AttackState : BaseState
 {
-    private float moveTimer;
-    private float losePlayerTimer;
-    private float shotTimer;
+    private float lostSightSince;
+    private float nextMoveTime;
+    private float nextShotTime;
 
     public override void Enter()
     {
-        shotTimer = 0f;
-        losePlayerTimer = 0f;
-        moveTimer = 0f;
+        lostSightSince = 0f;
+        nextMoveTime = 0f;
+        nextShotTime = 0f;
     }
 
     public override void Perform()
@@ -21,71 +21,46 @@ public class AttackState : BaseState
             return;
         }
 
-        if (enemy.CanSeePlayer())
+        if (!enemy.CanSeePlayer())
         {
-            // Reset timers when player is visible
-            losePlayerTimer = 0f;
-            enemy.LastKnownPosition = enemy.Player.transform.position;
-
-            // Rotate towards player smoothly
-            Vector3 direction = (enemy.Player.transform.position - enemy.transform.position).normalized;
-            direction.y = 0; // Keep horizontal rotation
-            if (direction != Vector3.zero)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(direction);
-                enemy.transform.rotation = Quaternion.Slerp(enemy.transform.rotation, targetRotation, Time.deltaTime * 5f);
-            }
-
-            // Shoot interval
-            shotTimer += Time.deltaTime;
-            if (shotTimer >= enemy.fireRate)
-            {
-                Shoot();
-                shotTimer = 0f;
-            }
-
-            // Reposition / move towards player occasionally
-            moveTimer += Time.deltaTime;
-            if (moveTimer > Random.Range(2f, 4f))
-            {
-                if (enemy.Agent.isOnNavMesh)
-                {
-                    enemy.Agent.SetDestination(enemy.Player.transform.position);
-                }
-                moveTimer = 0f;
-            }
-        }
-        else
-        {
-            // Count up when line of sight is broken
-            losePlayerTimer += Time.deltaTime;
-            if (losePlayerTimer > 4f)
-            {
-                // Lost sight of player -> Transition to SearchState
-                stateMachine.ChangeState(new SearchState());
-            }
-        }
-    }
-
-    public override void Exit()
-    {
-    }
-
-    public void Shoot()
-    {
-        if (enemy.bulletPrefab == null)
-        {
+            if (lostSightSince == 0f) lostSightSince = Time.time;
+            if (Time.time - lostSightSince > 4f) stateMachine.ChangeState(new SearchState());
             return;
         }
 
-        Transform spawnPoint = enemy.gunBarrel != null ? enemy.gunBarrel : enemy.transform;
-        Vector3 aimTarget = enemy.Player.transform.position + Vector3.up; // Aim at player chest
-        Vector3 shootDirection = (aimTarget - spawnPoint.position).normalized;
+        lostSightSince = 0f;
+        enemy.LastKnownPosition = enemy.Player.transform.position;
+        FacePlayer();
 
-        GameObject bulletObj = Object.Instantiate(enemy.bulletPrefab, spawnPoint.position, Quaternion.LookRotation(shootDirection));
-        if (bulletObj.TryGetComponent<Bullet>(out Bullet bullet))
+        if (Time.time >= nextShotTime)
         {
-            bullet.SetOwner(enemy.transform);
+            Shoot();
+            nextShotTime = Time.time + enemy.fireRate;
         }
+
+        if (enemy.Agent.isOnNavMesh && Time.time >= nextMoveTime)
+        {
+            enemy.Agent.SetDestination(enemy.Player.transform.position);
+            nextMoveTime = Time.time + Random.Range(2f, 4f);
+        }
+    }
+
+    public override void Exit() { }
+
+    private void FacePlayer()
+    {
+        Vector3 direction = enemy.Player.transform.position - enemy.transform.position;
+        direction.y = 0f;
+        if (direction.sqrMagnitude > 0.001f)
+            enemy.transform.rotation = Quaternion.Slerp(enemy.transform.rotation, Quaternion.LookRotation(direction), 5f * Time.deltaTime);
+    }
+
+    private void Shoot()
+    {
+        if (enemy.bulletPrefab == null) return;
+        Transform muzzle = enemy.gunBarrel != null ? enemy.gunBarrel : enemy.transform;
+        Vector3 direction = (enemy.Player.transform.position + Vector3.up - muzzle.position).normalized;
+        GameObject bullet = Object.Instantiate(enemy.bulletPrefab, muzzle.position, Quaternion.LookRotation(direction));
+        bullet.GetComponent<Bullet>()?.SetOwner(enemy.transform);
     }
 }

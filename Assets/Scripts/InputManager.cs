@@ -5,7 +5,7 @@ using InputActions = GunQuest.Input.PlayerInput;
 [RequireComponent(typeof(PlayerMotor))]
 public class InputManager : MonoBehaviour
 {
-    private InputActions playerInput;
+    private InputActions input;
     private InputActions.OnFootActions onFoot;
     private PlayerMotor motor;
     private PlayerLook look;
@@ -13,155 +13,77 @@ public class InputManager : MonoBehaviour
     private PlayerShoot shoot;
     private PlayerMelee melee;
     private bool firing;
+    private PlayerWeapons weapons;
 
     public InputActions.OnFootActions OnFoot => onFoot;
 
-    void Awake()
+    private void Awake()
     {
-        // Khởi tạo PlayerInput và tham chiếu đến Action Map "OnFoot" [1]
-        playerInput = new InputActions();
-        onFoot = playerInput.OnFoot;
-        
+        input = new InputActions();
+        onFoot = input.OnFoot;
         motor = GetComponent<PlayerMotor>();
-        look = GetComponent<PlayerLook>();
-        interact = GetComponent<PlayerInteract>();
+        look = GetComponentInChildren<PlayerLook>();
+        interact = GetComponentInChildren<PlayerInteract>();
         shoot = GetComponent<PlayerShoot>();
         melee = GetComponent<PlayerMelee>();
+        weapons = GetComponent<PlayerWeapons>();
 
-        if (look == null)
-        {
-            look = GetComponentInChildren<PlayerLook>();
-        }
-
-        if (GetComponent<PlayerCameraFollow>() == null)
-        {
-            gameObject.AddComponent<PlayerCameraFollow>();
-        }
-
-        if (interact == null)
-        {
-            interact = GetComponentInChildren<PlayerInteract>();
-        }
-
-        if (shoot == null)
-        {
-            shoot = gameObject.AddComponent<PlayerShoot>();
-        }
-
-        if (melee == null)
-        {
-            melee = gameObject.AddComponent<PlayerMelee>();
-        }
-
-        // Đăng ký sự kiện Jump khi hành động được thực hiện [3]
-        onFoot.Jump.performed += ctx =>
-        {
-            if (motor != null)
-            {
-                motor.Jump();
-            }
-        };
-
-        onFoot.Crouch.performed += ctx =>
-        {
-            if (motor != null)
-            {
-                motor.Crouch();
-            }
-        };
-
-        onFoot.Sprint.started += ctx =>
-        {
-            if (motor != null)
-            {
-                motor.SetSprinting(true);
-            }
-        };
-
-        onFoot.Sprint.canceled += ctx =>
-        {
-            if (motor != null)
-            {
-                motor.SetSprinting(false);
-            }
-        };
-
-        onFoot.Interact.performed += ctx =>
-        {
-            if (interact != null)
-            {
-                interact.ProcessInteract();
-            }
-        };
-
-        onFoot.Fire.started += ctx => firing = true;
-        onFoot.Fire.canceled += ctx => firing = false;
-        onFoot.Melee.performed += ctx => PerformMelee();
-
-        onFoot.IdleGunMiddle.performed += ctx => PlayAnimation("Idle_gunMiddle_AR");
-        onFoot.IdleShoot.performed += ctx => PlayAnimation("Idle_Shoot_Ar");
-        onFoot.Reload.performed += ctx => PlayAnimation("Reload");
-        onFoot.RunGunMiddle.performed += ctx => PlayAnimation("Run_gunMiddle_AR");
-        onFoot.ShootAuto.performed += ctx => PlayAnimation("Shoot_Autoshot_AR");
-        onFoot.ShootBurst.performed += ctx => PlayAnimation("Shoot_BurstShot_AR");
-        onFoot.ShootSingle.performed += ctx => PlayAnimation("Shoot_SingleShot_AR");
-        onFoot.Die.performed += ctx => PlayAnimation("Die");
+        onFoot.Jump.performed += _ => motor.Jump();
+        onFoot.Crouch.performed += _ => motor.Crouch();
+        onFoot.Sprint.started += _ => motor.SetSprinting(true);
+        onFoot.Sprint.canceled += _ => motor.SetSprinting(false);
+        onFoot.Interact.performed += _ => interact?.ProcessInteract();
+        onFoot.Melee.performed += _ => Melee();
+        onFoot.Reload.performed += _ => { if (weapons == null || weapons.Current == null || !weapons.Current.melee) motor.Reload(); };
+        onFoot.Fire.started += _ => SetFiring(true);
+        onFoot.Fire.canceled += _ => SetFiring(false);
     }
 
-    void Update()
+    private void Update()
     {
-        if (!firing || shoot == null)
+        if (weapons != null)
         {
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard != null)
+            {
+                int slot = keyboard.digit1Key.wasPressedThisFrame ? 0 : keyboard.digit2Key.wasPressedThisFrame ? 1 :
+                    keyboard.digit3Key.wasPressedThisFrame ? 2 : keyboard.digit4Key.wasPressedThisFrame ? 3 : -1;
+                if (slot >= 0 && weapons.Equip(slot)) SetFiring(false);
+            }
+            if (firing && weapons.Current != null && weapons.Current.automatic) weapons.Attack();
             return;
         }
-
-        if (shoot.Shoot() && motor != null)
-        {
-            motor.PlayShootAnimation();
-        }
+        if (!firing || shoot == null || !shoot.Shoot()) return;
+        motor.FaceCameraDirection();
     }
 
-    void FixedUpdate()
+    private void FixedUpdate()
     {
-        // Yêu cầu PlayerMotor xử lý di chuyển bằng giá trị từ Movement Action [4]
-        if (motor != null)
-        {
-            motor.ProcessMove(onFoot.Movement.ReadValue<Vector2>());
-        }
+        motor.ProcessMove(onFoot.Movement.ReadValue<Vector2>());
     }
 
-    void LateUpdate()
+    private void LateUpdate()
     {
-        // Yêu cầu PlayerLook xử lý nhìn xung quanh [2]
-        if (look != null)
-        {
-            look.ProcessLook(onFoot.Look.ReadValue<Vector2>());
-        }
+        look?.ProcessLook(onFoot.Look.ReadValue<Vector2>());
     }
 
-    private void OnEnable()
-    {
-        onFoot.Enable(); // Kích hoạt Action Map [1]
-    }
-
+    private void OnEnable() => onFoot.Enable();
     private void OnDisable()
     {
-        onFoot.Disable(); // Hủy kích hoạt Action Map [5]
+        firing = false;
+        motor?.SetFiring(false);
+        onFoot.Disable();
     }
 
-    private void PlayAnimation(string stateName)
+    private void Melee()
     {
-        if (motor != null)
-        {
-            motor.PlayAnimation(stateName);
-        }
+        if (melee != null && melee.Attack()) motor.PlayMeleeAnimation();
     }
 
-    private void PerformMelee()
+    private void SetFiring(bool value)
     {
-        if (melee != null && melee.Attack() && motor != null)
-        {
-            motor.PlayMeleeAnimation();
-        }
+        firing = value;
+        motor.SetFiring(value && (weapons == null || (weapons.Current != null && !weapons.Current.melee)));
+        if (value && weapons != null) weapons.Attack();
     }
 }

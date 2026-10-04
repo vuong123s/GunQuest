@@ -3,131 +3,68 @@ using UnityEngine.UI;
 
 public class PlayerHealth : MonoBehaviour
 {
-    private float health;
-    private float lerpTimer;
-
     [Header("Health Settings")]
-    [SerializeField]
     public float maxHealth = 100f;
-    [SerializeField]
     public float chipSpeed = 2f;
-
     [Header("UI Health Bars")]
-    [SerializeField]
     public Image frontHealthBar;
-    [SerializeField]
     public Image backHealthBar;
-
     [Header("Damage Screen Overlay")]
-    [SerializeField]
     public Image overlay;
-    [SerializeField]
     public float duration = 1f;
-    [SerializeField]
     public float fadeSpeed = 1.5f;
-    private float durationTimer;
 
-    void Start()
+    private float health;
+    private float overlayTimer;
+    private PlayerMotor motor;
+
+    public bool IsDead => health <= 0f;
+
+    private void Start()
     {
+        motor = GetComponent<PlayerMotor>();
         health = maxHealth;
-        if (overlay != null)
-        {
-            overlay.color = new Color(overlay.color.r, overlay.color.g, overlay.color.b, 0f);
-        }
-    }
-
-    void Update()
-    {
-        health = Mathf.Clamp(health, 0, maxHealth);
+        SetOverlayAlpha(0f);
         UpdateHealthUI();
-        UpdateDamageOverlay();
     }
 
-    public void UpdateHealthUI()
+    private void Update()
     {
-        if (frontHealthBar == null || backHealthBar == null)
-        {
-            return;
-        }
-
-        float fillF = frontHealthBar.fillAmount;
-        float fillB = backHealthBar.fillAmount;
-        float hFraction = health / maxHealth;
-
-        // When taking damage (back bar chips down smoothly)
-        if (fillB > hFraction)
-        {
-            frontHealthBar.fillAmount = hFraction;
-            backHealthBar.color = Color.red;
-            lerpTimer += Time.deltaTime;
-            float percentComplete = lerpTimer / chipSpeed;
-            percentComplete = percentComplete * percentComplete;
-            backHealthBar.fillAmount = Mathf.Lerp(fillB, hFraction, percentComplete);
-        }
-
-        // When restoring health (front bar fills smoothly)
-        if (fillF < hFraction)
-        {
-            backHealthBar.color = Color.green;
-            backHealthBar.fillAmount = hFraction;
-            lerpTimer += Time.deltaTime;
-            float percentComplete = lerpTimer / chipSpeed;
-            percentComplete = percentComplete * percentComplete;
-            frontHealthBar.fillAmount = Mathf.Lerp(fillF, backHealthBar.fillAmount, percentComplete);
-        }
-    }
-
-    private void UpdateDamageOverlay()
-    {
-        if (overlay == null)
-        {
-            return;
-        }
-
-        // Low health pulsing or fading effect
-        if (overlay.color.a > 0)
-        {
-            if (health < 30)
-            {
-                return; // Keep blood vignette when health is critically low
-            }
-
-            durationTimer += Time.deltaTime;
-            if (durationTimer > duration)
-            {
-                float tempAlpha = overlay.color.a - (Time.deltaTime * fadeSpeed);
-                overlay.color = new Color(overlay.color.r, overlay.color.g, overlay.color.b, Mathf.Clamp01(tempAlpha));
-            }
-        }
+        UpdateHealthUI();
+        overlayTimer += Time.deltaTime;
+        if (overlay != null && overlayTimer >= duration) SetOverlayAlpha(Mathf.MoveTowards(overlay.color.a, 0f, fadeSpeed * Time.deltaTime));
     }
 
     public void TakeDamage(float damage)
     {
-        health -= damage;
-        lerpTimer = 0f;
-        durationTimer = 0f;
-
-        if (overlay != null)
-        {
-            overlay.color = new Color(overlay.color.r, overlay.color.g, overlay.color.b, 0.8f);
-        }
-
-        if (health <= 0)
-        {
-            Die();
-        }
+        if (damage <= 0f || IsDead) return;
+        health = Mathf.Max(0f, health - damage);
+        overlayTimer = 0f;
+        SetOverlayAlpha(0.8f);
+        if (IsDead) motor?.PlayDieAnimation();
+        else motor?.PlayHitAnimation();
     }
 
-    public void RestoreHealth(float healAmount)
+    public void RestoreHealth(float amount)
     {
-        health += healAmount;
-        lerpTimer = 0f;
-    }
-
-    private void Die()
-    {
-        Debug.Log("Player has died!");
+        if (amount > 0f) health = Mathf.Min(maxHealth, health + amount);
     }
 
     public float GetCurrentHealth() => health;
+
+    public void UpdateHealthUI()
+    {
+        if (maxHealth <= 0f) return;
+        float target = health / maxHealth;
+        if (frontHealthBar != null) frontHealthBar.fillAmount = Mathf.MoveTowards(frontHealthBar.fillAmount, target, chipSpeed * Time.deltaTime);
+        if (backHealthBar != null) backHealthBar.fillAmount = Mathf.MoveTowards(backHealthBar.fillAmount, target, chipSpeed * Time.deltaTime);
+    }
+
+    private void SetOverlayAlpha(float alpha)
+    {
+        if (overlay == null) return;
+        Color color = overlay.color;
+        color.a = alpha;
+        overlay.color = color;
+    }
 }

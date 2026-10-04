@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class EventOnlyInteractable : Interactable
 {
-    void Reset()
+    private void Reset()
     {
         useEvents = true;
     }

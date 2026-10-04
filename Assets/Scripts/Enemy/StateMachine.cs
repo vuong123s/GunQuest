@@ -9,28 +9,18 @@ public class StateMachine : MonoBehaviour
         ChangeState(new PatrolState());
     }
 
-    void Update()
+    private void Update()
     {
-        if (activeState != null)
-        {
-            activeState.Perform();
-        }
+        activeState?.Perform();
     }
 
     public void ChangeState(BaseState newState)
     {
-        if (activeState != null)
-        {
-            activeState.Exit();
-        }
-
+        activeState?.Exit();
         activeState = newState;
-
-        if (activeState != null)
-        {
-            activeState.stateMachine = this;
-            activeState.enemy = GetComponent<Enemy>();
-            activeState.Enter();
-        }
+        if (activeState == null) return;
+        activeState.stateMachine = this;
+        activeState.enemy = GetComponent<Enemy>();
+        activeState.Enter();
     }
 }

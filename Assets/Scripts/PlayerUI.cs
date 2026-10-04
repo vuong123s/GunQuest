@@ -10,7 +10,7 @@ public class PlayerUI : MonoBehaviour
     [SerializeField]
     private Text promptTextLegacy;
 
-    void Awake()
+    private void Awake()
     {
         if (promptTextTMP == null)
         {
@@ -25,13 +25,7 @@ public class PlayerUI : MonoBehaviour
 
     public void UpdateText(string promptMessage)
     {
-        if (promptTextTMP != null)
-        {
-            promptTextTMP.text = promptMessage;
-        }
-        else if (promptTextLegacy != null)
-        {
-            promptTextLegacy.text = promptMessage;
-        }
+        if (promptTextTMP != null) promptTextTMP.text = promptMessage;
+        else if (promptTextLegacy != null) promptTextLegacy.text = promptMessage;
     }
 }

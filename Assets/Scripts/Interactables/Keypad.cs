@@ -2,32 +2,16 @@ using UnityEngine;
 
 public class Keypad : Interactable
 {
-    [SerializeField]
-    private GameObject targetDoor;
-    private bool isOpen;
+    [SerializeField] private GameObject targetDoor;
 
-    void Awake()
-    {
-        promptMessage = "Press E to Use Keypad";
-    }
+    private void Awake() => promptMessage = "Press E to Use Keypad";
 
     protected override void Interact()
     {
-        isOpen = !isOpen;
-        if (targetDoor != null)
-        {
-            if (targetDoor.TryGetComponent<Door>(out Door doorComponent))
-            {
-                doorComponent.BaseInteract();
-            }
-            else if (targetDoor.TryGetComponent<Animator>(out Animator animator))
-            {
-                animator.SetBool("IsOpen", isOpen);
-            }
-            else
-            {
-                targetDoor.SetActive(!targetDoor.activeSelf);
-            }
-        }
+        if (targetDoor == null) return;
+        Door door = targetDoor.GetComponent<Door>();
+        if (door != null) door.BaseInteract();
+        else if (targetDoor.TryGetComponent<Animator>(out Animator animator)) animator.SetBool("IsOpen", true);
+        else targetDoor.SetActive(!targetDoor.activeSelf);
     }
 }

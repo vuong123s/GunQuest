@@ -3,8 +3,8 @@ using UnityEngine;
 public class PlayerLook : MonoBehaviour
 {
     public Camera cam;
-    [Min(0.01f)] public float xSensitivity = 180f;
-    [Min(0.01f)] public float ySensitivity = 140f;
+    [Min(0.01f)] public float xSensitivity = 80f;
+    [Min(0.01f)] public float ySensitivity = 65f;
     [SerializeField] private float minPitch = -35f;
     [SerializeField] private float maxPitch = 65f;
 
@@ -16,22 +16,12 @@ public class PlayerLook : MonoBehaviour
 
     private void Awake()
     {
-        if (cam == null)
-        {
-            cam = GetComponentInChildren<Camera>();
-        }
-
-        if (cam == null)
-        {
-            cam = Camera.main;
-        }
+        cam = cam != null ? cam : GetComponentInChildren<Camera>() ?? Camera.main;
 
         yRotation = transform.eulerAngles.y;
-        if (cam != null)
-        {
-            float cameraPitch = cam.transform.eulerAngles.x;
-            xRotation = Mathf.Clamp(cameraPitch > 180f ? cameraPitch - 360f : cameraPitch, minPitch, maxPitch);
-        }
+        if (cam == null) return;
+        float cameraPitch = cam.transform.eulerAngles.x;
+        xRotation = Mathf.Clamp(cameraPitch > 180f ? cameraPitch - 360f : cameraPitch, minPitch, maxPitch);
     }
 
     public void ProcessLook(Vector2 input)
