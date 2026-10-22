@@ -79,7 +79,7 @@ public class PlayerMotor : MonoBehaviour
 
         float moveSpeed = sprinting && !crouching ? sprintSpeed : speed;
         controller.Move((move * moveSpeed + Vector3.up * verticalSpeed) * Time.deltaTime);
-        RotatePlayer(move);
+        // First-person yaw is controlled by PlayerLook.
         UpdateAnimator(input);
     }
 
@@ -183,8 +183,8 @@ public class PlayerMotor : MonoBehaviour
     {
         if (animator == null) return;
         bool moving = input.sqrMagnitude > 0.01f;
-        float moveX = aiming ? input.x : 0f;
-        float moveY = aiming ? input.y : input.magnitude;
+        float moveX = input.x;
+        float moveY = input.y;
 
         SetFloat(MoveX, moveX, animationDampTime);
         SetFloat(MoveY, moveY, animationDampTime);

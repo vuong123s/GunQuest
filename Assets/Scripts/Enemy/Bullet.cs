@@ -12,7 +12,8 @@ public class Bullet : MonoBehaviour
     {
         Collider bulletCollider = GetComponent<Collider>();
         if (bulletCollider != null) bulletCollider.isTrigger = true;
-        Rigidbody body = GetComponent<Rigidbody>() ?? gameObject.AddComponent<Rigidbody>();
+        Rigidbody body = GetComponent<Rigidbody>();
+        if (body == null) body = gameObject.AddComponent<Rigidbody>();
         body.useGravity = false;
         body.isKinematic = true;
     }

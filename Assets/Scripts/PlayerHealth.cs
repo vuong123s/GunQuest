@@ -20,7 +20,7 @@ public class PlayerHealth : MonoBehaviour
 
     public bool IsDead => health <= 0f;
 
-    private void Start()
+    private void Awake()
     {
         motor = GetComponent<PlayerMotor>();
         health = maxHealth;
@@ -37,7 +37,7 @@ public class PlayerHealth : MonoBehaviour
 
     public void TakeDamage(float damage)
     {
-        if (damage <= 0f || IsDead) return;
+        if (damage <= 0f || IsDead || !ContractGame.ControlsAllowed) return;
         health = Mathf.Max(0f, health - damage);
         overlayTimer = 0f;
         SetOverlayAlpha(0.8f);
@@ -47,7 +47,7 @@ public class PlayerHealth : MonoBehaviour
 
     public void RestoreHealth(float amount)
     {
-        if (amount > 0f) health = Mathf.Min(maxHealth, health + amount);
+        if (amount > 0f && !IsDead) health = Mathf.Min(maxHealth, health + amount);
     }
 
     public float GetCurrentHealth() => health;

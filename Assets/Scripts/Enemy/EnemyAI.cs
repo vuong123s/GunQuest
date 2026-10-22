@@ -102,7 +102,7 @@ public class EnemyAI : MonoBehaviour
 
     private void Update()
     {
-        if (dead) return;
+        if (dead || !ContractGame.ControlsAllowed) return;
         if (player == null)
         {
             if (Time.time >= nextPlayerSearchTime) FindPlayer();
@@ -162,7 +162,7 @@ public class EnemyAI : MonoBehaviour
 
     public void DieNow()
     {
-        if (dead) return;
+        if (dead || !ContractGame.ControlsAllowed) return;
         dead = true;
         shotPending = false;
         StopLaser();

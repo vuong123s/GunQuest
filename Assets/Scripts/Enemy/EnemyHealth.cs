@@ -15,6 +15,7 @@ public class EnemyHealth : MonoBehaviour
     private MonsterEffects effects;
     private static Sprite whiteSprite;
 
+    public event System.Action<EnemyHealth> Died;
     public bool IsDead => health <= 0f;
     public float NormalizedHealth => maxHealth > 0f ? health / maxHealth : 0f;
 
@@ -61,6 +62,7 @@ public class EnemyHealth : MonoBehaviour
 
     private void Die()
     {
+        Died?.Invoke(this);
         if (healthBar != null) healthBar.gameObject.SetActive(false);
         enemyAI?.DieNow();
         effects?.PlayDeath();

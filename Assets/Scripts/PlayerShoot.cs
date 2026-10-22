@@ -29,13 +29,14 @@ public class PlayerShoot : MonoBehaviour
         aimCamera = aimCamera != null ? aimCamera : GetComponentInChildren<Camera>();
         if (aimCamera == null) aimCamera = Camera.main;
         firePoint = firePoint != null ? firePoint : FindFirePoint();
-        effects = GetComponent<WeaponEffects>() ?? gameObject.AddComponent<WeaponEffects>();
+        effects = GetComponent<WeaponEffects>();
+        if (effects == null) effects = gameObject.AddComponent<WeaponEffects>();
         effects.Initialize(firePoint);
     }
 
     public bool Shoot()
     {
-        if (!canShoot || Time.time < nextFireTime) return false;
+        if (!ContractGame.ControlsAllowed || !canShoot || Time.time < nextFireTime) return false;
         nextFireTime = Time.time + fireRate;
         Transform origin = firePoint != null ? firePoint : aimCamera != null ? aimCamera.transform : transform;
         Vector3 aimPoint = GetAimPoint(origin, out Vector3 hitNormal, out EnemyHealth enemy, out bool hitSomething);
