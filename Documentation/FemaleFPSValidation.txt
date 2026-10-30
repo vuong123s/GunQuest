@@ -1,0 +1,56 @@
+Female FPS deterministic Play Mode validation
+2026-10-23T05:09:47.7994040Z | Unity 6000.3.7f1
+PASS Active scene requires ContractGame and PlayerWeapons.
+PASS Player input/look and MainCamera are required.
+PASS Validation starts from a configured board or active contract.
+PASS Independent FPS render rig is missing.
+PASS Independent FPS Animator is missing.
+PASS FPS avatar is a valid Humanoid.
+PASS FPS Animator uses manual evaluation rather than automatic updates.
+PASS FPS Animator has an independent controller.
+PASS FPS clips contain no gameplay animation events.
+PASS FPS rig contains no colliders.
+PASS FPS rig contains no procedural sleeve tubes.
+PASS Exactly one selected Female arm variant has visible generated geometry.
+PASS Pistol selected for initial view.
+PASS Full pistol magazine rejects reload.
+CAPTURE FemaleFPS_Pistol.png | Pistol | 1,549
+PASS Pistol fires once.
+PASS Pistol shot consumes exactly one round.
+PASS Gameplay accepts reload for the partially empty magazine.
+PASS Pistol remains reloading before 1.4 seconds.
+PASS Independent FPS Animator enters ReloadHG.
+PASS Pause freezes gameplay.
+PASS Game clock does not advance while paused.
+PASS FPS reload normalized time does not advance while paused.
+PASS Pause preserves pending reload and ammo.
+PASS Pistol reload completes in 1,402 game seconds (expected 1,4).
+PASS Pistol reload fills magazine and consumes one reserve round.
+PASS Cannot equip slot 1
+PASS Rifle idle uses ReadyAR.
+CAPTURE FemaleFPS_Rifle.png | Rifle | 1,083
+PASS Rifle fires once.
+PASS Gameplay accepts reload for the partially empty magazine.
+PASS Rifle uses ReloadAR during its 2-second reload.
+CAPTURE FemaleFPS_Reload.png | Rifle | 0,419
+PASS Rifle reload completes in 2,023 game seconds (expected 2).
+PASS Rifle reload fills magazine and consumes one reserve round.
+PASS Rifle fires before cancellation test.
+PASS Gameplay accepts reload for the partially empty magazine.
+PASS Cannot equip slot 0
+PASS Switching to pistol cancels reload and restores ReadyHG.
+PASS Cannot equip slot 1
+PASS Cancelled rifle reload does not transfer ammo after its old deadline.
+PASS Cannot equip slot 2
+CAPTURE FemaleFPS_Bat.png | Bat | 0,639
+PASS Bat plays melee attack without a magazine.
+PASS Cannot equip slot 3
+CAPTURE FemaleFPS_Shovel.png | Shovel | 0,635
+PASS Shovel plays melee attack without a magazine.
+PASS Cannot equip slot 0
+CAPTURE FemaleFPS_PitchDown.png | Pistol | 0,556
+CAPTURE FemaleFPS_PitchUp.png | Pistol | 1,352
+PASS No rewards or contract completion were granted.
+PASS Saved progress was not modified.
+PASS Final cleanup confirms no saved progress changes.
+RESULT PASS | 0 failed checks | 12,70 wall seconds
