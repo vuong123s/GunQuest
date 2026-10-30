@@ -19,6 +19,10 @@ public class InputManager : MonoBehaviour
     private void Awake()
     {
         input = new InputActions(); onFoot = input.OnFoot;
+        // Right mouse belongs to ADS; retain F and the gamepad shoulder for quick melee.
+        for (int i = 0; i < onFoot.Melee.bindings.Count; i++)
+            if (onFoot.Melee.bindings[i].path == "<Mouse>/rightButton")
+                onFoot.Melee.ApplyBindingOverride(i, string.Empty);
         motor = GetComponent<PlayerMotor>(); look = GetComponentInChildren<PlayerLook>();
         interact = GetComponentInChildren<PlayerInteract>(); melee = GetComponent<PlayerMelee>();
         weapons = GetComponent<PlayerWeapons>(); health = GetComponent<PlayerHealth>();
@@ -27,7 +31,13 @@ public class InputManager : MonoBehaviour
         onFoot.Sprint.started += _ => { if (CanAct) motor.SetSprinting(true); };
         onFoot.Sprint.canceled += _ => motor.SetSprinting(false);
         onFoot.Interact.performed += _ => { if (CanAct) interact?.ProcessInteract(); };
-        onFoot.Melee.performed += _ => { if (CanAct && melee != null && melee.Attack()) motor.PlayMeleeAnimation(); };
+        onFoot.Melee.performed += _ =>
+        {
+            if (!CanAct) return;
+            firing = false; motor.SetFiring(false);
+            if (weapons != null) weapons.QuickMelee();
+            else if (melee != null && melee.Attack()) motor.PlayMeleeAnimation();
+        };
         onFoot.Reload.performed += _ => { if (CanAct) { firing = false; weapons?.Reload(); } };
         onFoot.Fire.started += _ => SetFiring(true);
         onFoot.Fire.canceled += _ => SetFiring(false);
@@ -39,10 +49,36 @@ public class InputManager : MonoBehaviour
         var keyboard = Keyboard.current;
         if (keyboard != null)
         {
-            int slot = keyboard.digit1Key.wasPressedThisFrame ? 0 : keyboard.digit2Key.wasPressedThisFrame ? 1 :
-                keyboard.digit3Key.wasPressedThisFrame ? 2 : keyboard.digit4Key.wasPressedThisFrame ? 3 : -1;
+            int slot = -1;
+            if (keyboard.digit1Key.wasPressedThisFrame) slot = 0;
+            else if (keyboard.digit2Key.wasPressedThisFrame) slot = 1;
+            else if (keyboard.digit3Key.wasPressedThisFrame) slot = 2;
+            else if (keyboard.digit4Key.wasPressedThisFrame) slot = 3;
+            else if (keyboard.digit5Key.wasPressedThisFrame) slot = 4;
+            else if (keyboard.digit6Key.wasPressedThisFrame) slot = 5;
+            else if (keyboard.digit7Key.wasPressedThisFrame) slot = 6;
+            else if (keyboard.digit8Key.wasPressedThisFrame) slot = 7;
+            else if (keyboard.digit9Key.wasPressedThisFrame) slot = 8;
+
             if (slot >= 0 && weapons.Equip(slot)) SetFiring(false);
         }
+
+        var mouse = Mouse.current;
+        if (mouse != null && weapons.Count > 0)
+        {
+            float scroll = mouse.scroll.ReadValue().y;
+            if (scroll > 0.5f)
+            {
+                int next = (weapons.SelectedIndex - 1 + weapons.Count) % weapons.Count;
+                weapons.Equip(next);
+            }
+            else if (scroll < -0.5f)
+            {
+                int next = (weapons.SelectedIndex + 1) % weapons.Count;
+                weapons.Equip(next);
+            }
+        }
+
         if (firing && weapons.Current != null && weapons.Current.automatic) weapons.Attack();
     }
     private void FixedUpdate() { if (CanAct) motor.ProcessMove(onFoot.Movement.ReadValue<Vector2>()); }
@@ -57,7 +93,7 @@ public class InputManager : MonoBehaviour
     private void SetFiring(bool value)
     {
         firing = value && CanAct;
-        motor.SetFiring(firing && weapons != null && weapons.Current != null && !weapons.Current.melee);
+        motor.SetFiring(firing && weapons != null && weapons.Current != null && !weapons.Current.melee && !weapons.IsMeleeAttacking);
         if (firing) weapons?.Attack();
     }
 }

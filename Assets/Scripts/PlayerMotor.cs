@@ -40,6 +40,7 @@ public class PlayerMotor : MonoBehaviour
 
     private readonly HashSet<int> animatorParameters = new HashSet<int>();
     private CharacterController controller;
+    public Vector3 Velocity => controller != null ? controller.velocity : Vector3.zero;
     private Animator animator;
     private float verticalSpeed;
     private bool crouching;

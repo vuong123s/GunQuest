@@ -59,7 +59,7 @@ public class WeaponEffects : MonoBehaviour
             impactEffect.Emit(8);
         }
 
-        audioSource.PlayOneShot(shotSound);
+        audioSource.PlayOneShot(shotSound, GameSettings.Instance != null ? GameSettings.Instance.sfxVolume : 1f);
         if (hideRoutine != null) StopCoroutine(hideRoutine);
         hideRoutine = StartCoroutine(HideFlash());
     }
