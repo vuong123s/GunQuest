@@ -34,8 +34,11 @@ public class FemaleAnimationDriver : MonoBehaviour
 
     private void OnAttack()
     {
-        if (characterAnimator != null && weapons.Current != null && !weapons.Current.melee)
-            characterAnimator.SetTrigger("Shoot");
+        if (characterAnimator != null && weapons.Current != null)
+        {
+            if (weapons.Current.melee) characterAnimator.SetTrigger("Melee");
+            else characterAnimator.SetTrigger("Shoot");
+        }
     }
 
     private void Update()
@@ -47,7 +50,7 @@ public class FemaleAnimationDriver : MonoBehaviour
         var state = characterAnimator.GetCurrentAnimatorStateInfo(0);
         bool action = state.IsTag("FullBody");
         if (characterAnimator.layerCount > 1)
-            characterAnimator.SetLayerWeight(1, dead || action || (weapons != null && weapons.Current != null && weapons.Current.melee) ? 0f : 1f);
+            characterAnimator.SetLayerWeight(1, dead || action ? 0f : 1f);
         if (look != null) characterAnimator.SetFloat("AimPitch", -look.Pitch / 85f);
     }
 

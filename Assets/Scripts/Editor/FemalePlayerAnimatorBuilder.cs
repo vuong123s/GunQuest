@@ -180,6 +180,15 @@ public static class FemalePlayerAnimatorBuilder
             Action(root,shot,"Shoot",rifle);Return(shot,empty);
             reload.speed = Clip(clips,"Reloading",rifle).length / (rifle ? 2f : 1.4f); Action(root,reload,"Reload",rifle);Return(reload,empty);
         }
+        var meleeClip = clips.ContainsKey("PowerUp_HG01") ? clips["PowerUp_HG01"] : Clip(clips, "ShootSingleshot", false);
+        var melee = State(root, "Melee Attack", meleeClip, 500, 500);
+        melee.speed = 2.2f;
+        var meleeTrans = root.AddAnyStateTransition(melee);
+        meleeTrans.hasExitTime = false;
+        meleeTrans.duration = 0.05f;
+        meleeTrans.canTransitionToSelf = false;
+        meleeTrans.AddCondition(AnimatorConditionMode.If, 0, "Melee");
+        Return(melee, empty);
     }
 
     static Quaternion GripRotation(Animator animator, AnimatorController controller, bool rifle)
