@@ -14,6 +14,10 @@ public class ContractGame : MonoBehaviour
     [SerializeField] private GameObject extractionMarker;
     [SerializeField] private int reward = 200;
     [SerializeField] private float extractionRadius = 2.5f;
+    [Header("Mission")]
+    [SerializeField] private string missionTitle = "DỌN SẠCH KHU TRẠI";
+    [SerializeField, TextArea(2, 4)] private string missionBriefing = "Săn quái laser, sau đó quay về vòng xanh ở điểm xuất phát.";
+    [SerializeField, TextArea(2, 4)] private string missionObjective = "Tiêu diệt quái laser trong khu trại.";
     public Phase State { get; private set; }
     public ContractProgress Progress { get; private set; }
     public bool IsPlaying => State == Phase.Hunting || State == Phase.Extracting;
@@ -21,6 +25,18 @@ public class ContractGame : MonoBehaviour
         ? Vector3.Distance(player.transform.position, extractionPoint.position) : float.PositiveInfinity;
     public string FailureReason { get; private set; }
     public int Reward => reward;
+    public string MissionTitle => missionTitle;
+    public string MissionBriefing => missionBriefing;
+    public string MissionObjective => missionObjective;
+    public event System.Action<int> CreditsAdded;
+
+    public void AddCredits(int amount)
+    {
+        if (amount <= 0 || Progress == null) return;
+        Progress.credits += amount;
+        Progress.Save();
+        CreditsAdded?.Invoke(amount);
+    }
     private Phase resumePhase;
     private PlayerHealth player;
     private InputManager input;
@@ -54,10 +70,27 @@ public class ContractGame : MonoBehaviour
 
     private void Update()
     {
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        if (Keyboard.current != null)
         {
-            if (IsPlaying) Pause();
-            else if (State == Phase.Paused) Resume();
+            if (Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                if (IsPlaying) Pause();
+                else if (State == Phase.Paused) Resume();
+                else if (State == Phase.Board && ui != null) ui.ToggleSettingsFromBoard();
+            }
+
+            // Nhấn phím Enter (hoặc NumpadEnter) để mở / quay lại Bảng Hợp Đồng (Board) bất kỳ lúc nào
+            if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame)
+            {
+                if (IsPlaying)
+                {
+                    OpenBoardFromGameplay();
+                }
+                else if (State == Phase.Board)
+                {
+                    AcceptContract();
+                }
+            }
         }
         if (!IsPlaying) return;
         if (player == null || player.IsDead) { Fail("Bạn đã bị hạ. Thử lại hợp đồng."); return; }
@@ -70,9 +103,22 @@ public class ContractGame : MonoBehaviour
         if (player.transform.position.y < -10f) player.TakeDamage(player.maxHealth);
     }
 
+    public bool IsContractStarted => resumePhase == Phase.Hunting || resumePhase == Phase.Extracting;
+
+    public void OpenBoardFromGameplay()
+    {
+        resumePhase = State;
+        SetPhase(Phase.Board);
+    }
+
     public void AcceptContract()
     {
         if (State != Phase.Board) return;
+        if (resumePhase == Phase.Hunting || resumePhase == Phase.Extracting)
+        {
+            SetPhase(resumePhase);
+            return;
+        }
         if (player == null || contractTarget == null || extractionPoint == null)
         {
             Fail("Hợp đồng chưa được cấu hình đầy đủ."); return;
@@ -110,6 +156,39 @@ public class ContractGame : MonoBehaviour
     {
         if (State != Phase.Board || !Progress.TryBuy(damage)) return false;
         Progress.Save();
+        player?.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
+        return true;
+    }
+
+    public bool BuyPistolAmmo()
+    {
+        if (State != Phase.Board || !Progress.TryBuyPistolAmmo()) return false;
+        Progress.Save();
+        player?.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
+        return true;
+    }
+
+    public bool BuyRifleAmmo()
+    {
+        if (State != Phase.Board || !Progress.TryBuyRifleAmmo()) return false;
+        Progress.Save();
+        player?.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
+        return true;
+    }
+
+    public bool BuyPotion()
+    {
+        if (State != Phase.Board || !Progress.TryBuyPotion()) return false;
+        Progress.Save();
+        player?.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
+        return true;
+    }
+
+    public bool BuyGrenade()
+    {
+        if (State != Phase.Board || !Progress.TryBuyGrenade()) return false;
+        Progress.Save();
+        player?.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
         return true;
     }
 
