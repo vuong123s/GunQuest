@@ -1,0 +1,89 @@
+Female Bat / Shovel deterministic Play Mode validation
+2026-10-28T01:33:13.7842584Z | Unity 6000.3.7f1
+PASS Active scene requires ContractGame and PlayerWeapons.
+PASS Player input, look, melee and camera are present.
+PASS Validation starts from a fresh contract board.
+PASS Configured contract starts successfully.
+PASS Dedicated melee motion Animator exists.
+PASS Melee motion contains the animated Pose transform.
+PASS Melee animation clips contain no gameplay animation events.
+PASS First-person melee models have no colliders.
+PASS Can equip slot 2.
+CAPTURE FemaleMelee_BatIdle.png | Bat | attack elapsed 0,000
+PASS Bat accepted.
+PASS Bat holds the gameplay attack lock.
+PASS Bat does not apply immediate damage.
+PASS Bat rejects another attack during wind-up.
+PASS Bat deals no damage during early wind-up.
+PASS Bat plays its own BatSwing animation.
+CAPTURE FemaleMelee_BatWindup.png | Bat | attack elapsed 0,047
+PASS Bat impact | expected 0,9650, got 0,9650
+CAPTURE FemaleMelee_BatImpact.png | Bat | attack elapsed 0,259
+PASS Bat follow-through remains a single hit | expected 0,9650, got 0,9650
+CAPTURE FemaleMelee_BatFollowThrough.png | Bat | attack elapsed 0,460
+PASS Bat releases attack lock after recovery.
+PASS Bat second swing accepted.
+PASS Bat second swing holds the gameplay attack lock.
+PASS Bat second swing does not apply immediate damage.
+PASS Bat can hit again after recovery | expected 0,9300, got 0,9300
+PASS Bat blocked swing accepted.
+PASS Bat blocked swing holds the gameplay attack lock.
+PASS Bat blocked swing does not apply immediate damage.
+PASS A wall blocks Bat damage.
+PASS Bat out-of-range swing accepted.
+PASS Bat out-of-range swing holds the gameplay attack lock.
+PASS Bat out-of-range swing does not apply immediate damage.
+PASS Bat cannot hit an out-of-range target.
+PASS Bat switch cancellation accepted.
+PASS Bat switch cancellation holds the gameplay attack lock.
+PASS Bat switch cancellation does not apply immediate damage.
+PASS Can equip slot 0.
+PASS Switching to Pistol cancels the pending Bat attack.
+PASS Cancelled Bat attack cannot deal delayed damage.
+PASS Can equip slot 3.
+CAPTURE FemaleMelee_ShovelIdle.png | Shovel | attack elapsed 0,754
+PASS Shovel accepted.
+PASS Shovel holds the gameplay attack lock.
+PASS Shovel does not apply immediate damage.
+PASS Shovel rejects overlapping attacks.
+PASS Shovel deals no damage during early wind-up.
+PASS Shovel plays its own ShovelSwing animation.
+CAPTURE FemaleMelee_ShovelWindup.png | Shovel | attack elapsed 0,027
+PASS Shovel impact | expected 0,9500, got 0,9500
+CAPTURE FemaleMelee_ShovelImpact.png | Shovel | attack elapsed 0,332
+PASS Shovel follow-through remains a single hit | expected 0,9500, got 0,9500
+CAPTURE FemaleMelee_ShovelFollowThrough.png | Shovel | attack elapsed 0,498
+PASS Shovel releases attack lock after recovery.
+PASS Shovel paused swing accepted.
+PASS Shovel paused swing holds the gameplay attack lock.
+PASS Shovel paused swing does not apply immediate damage.
+PASS Pause freezes the swing.
+PASS Paused melee does not advance game time.
+PASS Paused wind-up cannot deliver damage.
+PASS Weapon motion does not advance while paused.
+PASS Resumed Shovel swing delivers exactly one hit | expected 0,9500, got 0,9500
+PASS Shovel blocked swing accepted.
+PASS Shovel blocked swing holds the gameplay attack lock.
+PASS Shovel blocked swing does not apply immediate damage.
+PASS A wall blocks Shovel damage.
+PASS Shovel out-of-range swing accepted.
+PASS Shovel out-of-range swing holds the gameplay attack lock.
+PASS Shovel out-of-range swing does not apply immediate damage.
+PASS Shovel cannot hit an out-of-range target.
+PASS Shovel switch cancellation accepted.
+PASS Shovel switch cancellation holds the gameplay attack lock.
+PASS Shovel switch cancellation does not apply immediate damage.
+PASS Can equip slot 0.
+PASS Switching to Pistol cancels pending Shovel damage.
+PASS Pistol accepts the dedicated quick melee action.
+PASS Quick melee also waits until contact.
+PASS Firearm cannot fire during quick melee.
+PASS Quick melee damages once using its own timing.
+PASS Can equip slot 3.
+PASS Shovel death cancellation accepted.
+PASS Shovel death cancellation holds the gameplay attack lock.
+PASS Shovel death cancellation does not apply immediate damage.
+PASS Player death cancels a pending swing without damage.
+PASS No rewards or contract completion were granted.
+PASS Saved contract progress was not changed.
+RESULT PASS | 0 failed checks | 12,67 wall seconds
