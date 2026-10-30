@@ -235,6 +235,8 @@ MonoBehaviour:
   maxHealth: 140
   barHeight: 3
   deathDelay: 2.8
+  coinDropCount: 4
+  coinValue: 10
 --- !u!114 &2202506909604009175
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -280,6 +282,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b25ae6594aaa7734fbf14b43f066f22f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAI
+  attackType: 1
+  meleeDamage: 20
+  meleeRange: 2
+  meleeCooldown: 1.1
+  meleeWindup: 0.22
   detectionRange: 24
   shootRange: 14
   preferredRange: 9

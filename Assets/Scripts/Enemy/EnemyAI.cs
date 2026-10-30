@@ -2,9 +2,22 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
+public enum EnemyAttackType
+{
+    Melee,
+    Ranged
+}
+
 [RequireComponent(typeof(EnemyHealth))]
 public class EnemyAI : MonoBehaviour
 {
+    [Header("Attack Mode")]
+    [SerializeField] private EnemyAttackType attackType = EnemyAttackType.Ranged;
+    [SerializeField] private float meleeDamage = 20f;
+    [SerializeField] private float meleeRange = 2.0f;
+    [SerializeField] private float meleeCooldown = 1.1f;
+    [SerializeField] private float meleeWindup = 0.22f;
+
     [Header("Movement")]
     [SerializeField] private float detectionRange = 18f;
     [SerializeField] private float shootRange = 12f;
@@ -12,7 +25,7 @@ public class EnemyAI : MonoBehaviour
     [SerializeField] private float moveSpeed = 3.5f;
     [SerializeField] private float turnSpeed = 10f;
 
-    [Header("Attack")]
+    [Header("Ranged Attack")]
     [SerializeField] private float fireRate = 1.2f;
     [SerializeField] private float attackWindup = 0.25f;
     [SerializeField] private float projectileOffset = 1.2f;
@@ -73,13 +86,60 @@ public class EnemyAI : MonoBehaviour
     private Vector3 eyeDirection;
     private string currentLegacyState;
 
+    public EnemyAttackType AttackType { get => attackType; set => attackType = value; }
+    public float MeleeDamage { get => meleeDamage; set => meleeDamage = value; }
+    public float MeleeRange { get => meleeRange; set => meleeRange = value; }
+    public float MeleeCooldown { get => meleeCooldown; set => meleeCooldown = value; }
+    public float MoveSpeed
+    {
+        get => moveSpeed;
+        set
+        {
+            moveSpeed = value;
+            if (agent != null) agent.speed = value;
+        }
+    }
+
+    public void ConfigureMelee(float damage, float range, float speed, float cooldown = 1.1f, float windup = 0.22f)
+    {
+        attackType = EnemyAttackType.Melee;
+        meleeDamage = damage;
+        meleeRange = range;
+        moveSpeed = speed;
+        meleeCooldown = cooldown;
+        meleeWindup = windup;
+        if (agent != null)
+        {
+            agent.speed = speed;
+            agent.stoppingDistance = Mathf.Max(0.8f, range * 0.6f);
+        }
+    }
+
+    public void ConfigureRanged(float damage, float preferredDist, float shootDist, float speed, float rate = 1.3f)
+    {
+        attackType = EnemyAttackType.Ranged;
+        projectileDamage = damage;
+        preferredRange = preferredDist;
+        shootRange = shootDist;
+        moveSpeed = speed;
+        fireRate = rate;
+        if (agent != null)
+        {
+            agent.speed = speed;
+            agent.stoppingDistance = 0f;
+        }
+    }
+
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         if (agent == null) agent = gameObject.AddComponent<NavMeshAgent>();
         agent.speed = moveSpeed;
-        agent.stoppingDistance = 0f;
+        agent.stoppingDistance = attackType == EnemyAttackType.Melee ? Mathf.Max(0.8f, meleeRange * 0.6f) : 0f;
         agent.updateRotation = false;
+        agent.radius = 0.85f;
+        agent.height = 2.7f;
+        agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
 
         animator = GetComponentInChildren<Animator>();
         effects = GetComponent<MonsterEffects>();
@@ -120,7 +180,7 @@ public class EnemyAI : MonoBehaviour
 
         EnterCombat();
         FacePlayer();
-        UpdateEyeAim();
+        if (attackType == EnemyAttackType.Ranged) UpdateEyeAim();
 
         if (laserActive)
         {
@@ -146,7 +206,8 @@ public class EnemyAI : MonoBehaviour
         }
 
         UpdateCombatMovement(distance);
-        if (distance <= shootRange && Time.time >= nextAttackTime) BeginAttack();
+        float currentAttackRange = attackType == EnemyAttackType.Melee ? meleeRange : shootRange;
+        if (distance <= currentAttackRange && Time.time >= nextAttackTime) BeginAttack();
     }
 
     public void OnDamaged(float damage)
@@ -215,6 +276,12 @@ public class EnemyAI : MonoBehaviour
 
     private void UpdateCombatMovement(float distance)
     {
+        if (attackType == EnemyAttackType.Melee)
+        {
+            UpdateMeleeMovement(distance);
+            return;
+        }
+
         Vector3 direction;
         float normalizedSpeed;
 
@@ -241,6 +308,39 @@ public class EnemyAI : MonoBehaviour
         }
 
         Move(direction, normalizedSpeed);
+    }
+
+    private void UpdateMeleeMovement(float distance)
+    {
+        if (distance > meleeRange)
+        {
+            float normalizedSpeed = distance > meleeRange + 4f ? 1f : 0.85f;
+            float targetSpeed = moveSpeed * normalizedSpeed;
+
+            if (agent.enabled && agent.isOnNavMesh)
+            {
+                agent.speed = targetSpeed;
+                agent.isStopped = false;
+                agent.SetDestination(player.position);
+            }
+            else
+            {
+                Vector3 direction = FlatDirectionToPlayer();
+                transform.position += direction * targetSpeed * Time.deltaTime;
+            }
+
+            Vector3 moveDir = agent.enabled && agent.isOnNavMesh && agent.velocity.sqrMagnitude > 0.01f
+                ? agent.velocity.normalized
+                : FlatDirectionToPlayer();
+            Vector3 localDirection = transform.InverseTransformDirection(moveDir);
+            SetMovement(new Vector2(localDirection.x, localDirection.z), normalizedSpeed);
+            PlayLegacy(walkState);
+        }
+        else
+        {
+            StopMoving();
+            SetMovement(Vector2.zero, 0f);
+        }
     }
 
     private void Move(Vector3 direction, float normalizedSpeed)
@@ -316,14 +416,22 @@ public class EnemyAI : MonoBehaviour
         if (!SetTrigger(Attack)) PlayLegacy(attackState);
 
         shotPending = true;
-        pendingShotTime = Time.time + attackWindup + attack * 0.04f;
-        nextAttackTime = Time.time + Mathf.Max(fireRate, attackWindup + 0.1f);
+        float windup = attackType == EnemyAttackType.Melee ? meleeWindup : attackWindup;
+        pendingShotTime = Time.time + windup + attack * 0.04f;
+        float rate = attackType == EnemyAttackType.Melee ? meleeCooldown : fireRate;
+        nextAttackTime = Time.time + Mathf.Max(rate, windup + 0.1f);
     }
 
     private void FirePendingShot()
     {
         if (!shotPending || Time.time < pendingShotTime) return;
         shotPending = false;
+
+        if (attackType == EnemyAttackType.Melee)
+        {
+            ExecuteMeleeHit();
+            return;
+        }
 
         Transform muzzle = gunBarrel != null ? gunBarrel : transform;
         Vector3 position = gunBarrel != null
@@ -345,6 +453,39 @@ public class EnemyAI : MonoBehaviour
         if (bullet == null) bullet = projectile.AddComponent<Bullet>();
         bullet.Configure(projectileSpeed, projectileDamage, projectileLifeTime);
         bullet.SetOwner(transform);
+    }
+
+    private void ExecuteMeleeHit()
+    {
+        if (player == null) return;
+        float distance = Vector3.Distance(transform.position, player.position);
+        if (distance <= meleeRange + 1.2f)
+        {
+            PlayerHealth health = player.GetComponent<PlayerHealth>();
+            if (health != null && !health.IsDead)
+            {
+                health.TakeDamage(meleeDamage);
+                PlayMeleeHitFeedback();
+            }
+        }
+    }
+
+    private void PlayMeleeHitFeedback()
+    {
+        if (player == null) return;
+        GameObject hitSpark = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        hitSpark.name = "MeleeHitSpark";
+        Vector3 hitPos = (transform.position + player.position) * 0.5f + Vector3.up * 1.2f;
+        hitSpark.transform.position = hitPos;
+        hitSpark.transform.localScale = Vector3.one * 0.35f;
+        Collider col = hitSpark.GetComponent<Collider>();
+        if (col != null) Destroy(col);
+        Renderer rend = hitSpark.GetComponent<Renderer>();
+        if (rend != null)
+        {
+            rend.material.color = new Color(1f, 0.2f, 0.1f, 0.8f);
+        }
+        Destroy(hitSpark, 0.08f);
     }
 
     private void StartLaser()

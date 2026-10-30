@@ -3787,6 +3787,8 @@ GameObject:
   - component: {fileID: 5762902411660218455}
   - component: {fileID: 6984967180852125650}
   - component: {fileID: 8103524688178362061}
+  - component: {fileID: 2983094668838374904}
+  - component: {fileID: 8974557422077029459}
   m_Layer: 0
   m_Name: Monster2
   m_TagString: Untagged
@@ -3827,10 +3829,10 @@ Animator:
   m_GameObject: {fileID: 5762902411667481585}
   m_Enabled: 1
   m_Avatar: {fileID: 9000000, guid: eeebdeb8be91e0e43ae9170c2d8e4279, type: 3}
-  m_Controller: {fileID: 9100000, guid: f5e71d2eda3d6cc40857811c187df502, type: 2}
+  m_Controller: {fileID: 9100000, guid: 76045180f22a61e4da644335f76b2ff8, type: 2}
   m_CullingMode: 1
   m_UpdateMode: 0
-  m_ApplyRootMotion: 1
+  m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
   m_AnimatePhysics: 0
@@ -3853,6 +3855,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyHealth
   maxHealth: 100
   barHeight: 2.2
+  deathDelay: 2.8
 --- !u!114 &8103524688178362061
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3866,13 +3869,74 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAI
   detectionRange: 18
-  attackRange: 2
+  shootRange: 12
+  preferredRange: 8
   moveSpeed: 3.5
-  damage: 12
-  attackCooldown: 1
+  turnSpeed: 10
+  fireRate: 1.2
+  attackWindup: 0.25
+  projectileOffset: 1.2
+  projectileSpeed: 65
+  projectileDamage: 15
+  projectileLifeTime: 1.6
+  gunBarrel: {fileID: 0}
+  bulletPrefab: {fileID: 0}
+  eye: {fileID: 0}
+  laserDuration: 1.2
+  laserRange: 20
+  laserDamageInterval: 0.2
+  eyeTrackingSpeed: 10
+  eyeSurfaceOffset: 0.35
   idleState: Idle
   walkState: Walk
   attackState: Attack
+  hitState: GetHit
+  dieState: Die
+--- !u!195 &2983094668838374904
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5762902411667481585}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.75
+  m_Speed: 4
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 1.75
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
+--- !u!136 &8974557422077029459
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5762902411667481585}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.65
+  m_Height: 1.75
+  m_Direction: 1
+  m_Center: {x: 0, y: 0.875, z: 0}
 --- !u!1 &5762902411667481589
 GameObject:
   m_ObjectHideFlags: 0

@@ -7,6 +7,13 @@ public class EnemyHealth : MonoBehaviour
     [SerializeField] private float barHeight = 2.8f;
     [SerializeField] private float deathDelay = 2.8f;
 
+    [Header("Coin Drop")]
+    [SerializeField] private int coinDropCount = 4;
+    [SerializeField] private int coinValue = 10;
+
+    public int CoinDropCount { get => coinDropCount; set => coinDropCount = value; }
+    public int CoinValue { get => coinValue; set => coinValue = value; }
+
     private float health;
     private Image fill;
     private Transform healthBar;
@@ -17,6 +24,7 @@ public class EnemyHealth : MonoBehaviour
 
     public event System.Action<EnemyHealth> Died;
     public bool IsDead => health <= 0f;
+    public float CurrentHealth => health;
     public float NormalizedHealth => maxHealth > 0f ? health / maxHealth : 0f;
 
     private void Awake()
@@ -66,6 +74,9 @@ public class EnemyHealth : MonoBehaviour
         if (healthBar != null) healthBar.gameObject.SetActive(false);
         enemyAI?.DieNow();
         effects?.PlayDeath();
+
+        // Spawn golden coin fountain burst
+        GoldCoin.SpawnBurst(transform.position + Vector3.up * 0.8f, coinDropCount, coinValue);
 
         foreach (Collider bodyCollider in GetComponentsInChildren<Collider>())
         {
