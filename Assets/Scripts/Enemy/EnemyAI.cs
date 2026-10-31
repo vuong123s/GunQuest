@@ -473,9 +473,18 @@ public class EnemyAI : MonoBehaviour
     private void PlayMeleeHitFeedback()
     {
         if (player == null) return;
+        Vector3 hitPos = (transform.position + player.position) * 0.5f + Vector3.up * 1.2f;
+        GameObject impactPrefab = Resources.Load<GameObject>("VFX/vfx_Impact_01");
+        if (impactPrefab != null)
+        {
+            GameObject vfx = Instantiate(impactPrefab, hitPos, Quaternion.LookRotation((player.position - transform.position).normalized));
+            vfx.transform.localScale = Vector3.one * 0.75f;
+            Destroy(vfx, 1.2f);
+            return;
+        }
+
         GameObject hitSpark = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         hitSpark.name = "MeleeHitSpark";
-        Vector3 hitPos = (transform.position + player.position) * 0.5f + Vector3.up * 1.2f;
         hitSpark.transform.position = hitPos;
         hitSpark.transform.localScale = Vector3.one * 0.35f;
         Collider col = hitSpark.GetComponent<Collider>();

@@ -177,12 +177,11 @@ public sealed class AnimatedFirstPersonRig : IDisposable
         if (model != null && weapons.Current.melee)
         {
             model.SetParent(hand[1], false);
-            bool shovel = weapons.CurrentMeleeTiming.Duration == MeleeAttackTiming.Shovel.Duration;
-            model.localPosition = shovel ? new Vector3(0.06f, -0.06f, 0.00f) : new Vector3(0.06f, -0.04f, 0.00f);
+            model.localPosition = new Vector3(0.06f, -0.04f, 0.00f);
             var baseGripRot = Quaternion.Euler(0.15f, 89.79f, 89.79f);
             gripRotation = baseGripRot;
             model.localRotation = gripRotation;
-            model.localScale = Vector3.one * (shovel ? .55f : .60f);
+            model.localScale = Vector3.one * 0.60f;
         }
         else if (model != null && isItem)
         {
@@ -234,9 +233,8 @@ public sealed class AnimatedFirstPersonRig : IDisposable
         }
         else
         {
-            bool shovel = weapons.CurrentMeleeTiming.Duration == MeleeAttackTiming.Shovel.Duration;
-            recoil += shovel ? new Vector3(1.4f, 0.4f, 0.03f) : new Vector3(0.6f, -1.2f, 0.02f);
-            BeginMelee(shovel ? "ShovelSwing" : "BatSwing", weapons.CurrentMeleeTiming);
+            recoil += new Vector3(0.6f, -1.2f, 0.02f);
+            BeginMelee("BatSwing", weapons.CurrentMeleeTiming);
         }
     }
 

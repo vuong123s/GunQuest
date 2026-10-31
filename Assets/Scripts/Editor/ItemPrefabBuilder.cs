@@ -115,16 +115,22 @@ public static class ItemPrefabBuilder
         glassMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
         glassMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
         glassMat.SetInt("_ZWrite", 0);
-        glassMat.SetFloat("_Cull", 0f);    // Double-sided
+        glassMat.SetFloat("_Cull", 2f);    // Cull Back
         glassMat.SetFloat("_BlendModePreserveSpecular", 1f);
         glassMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
         glassMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
         glassMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-        Color rubyGlass = new Color(1.0f, 0.18f, 0.28f, 0.40f);
+        glassMat.SetOverrideTag("RenderType", "Transparent");
+        Color rubyGlass = new Color(1.0f, 0.12f, 0.22f, 0.35f);
         glassMat.color = rubyGlass;
         if (glassMat.HasProperty("_BaseColor")) glassMat.SetColor("_BaseColor", rubyGlass);
-        glassMat.SetFloat("_Metallic", 0.08f);
-        glassMat.SetFloat("_Smoothness", 0.98f);
+        glassMat.SetFloat("_Metallic", 0.02f);
+        glassMat.SetFloat("_Smoothness", 0.75f);
+        if (glassMat.HasProperty("_EmissionColor"))
+        {
+            glassMat.EnableKeyword("_EMISSION");
+            glassMat.SetColor("_EmissionColor", new Color(0.8f, 0.05f, 0.15f) * 0.4f);
+        }
         EditorUtility.SetDirty(glassMat);
 
         // 2. Glowing Ruby Elixir Material (Opaque vibrant red with emission)
@@ -135,16 +141,22 @@ public static class ItemPrefabBuilder
             AssetDatabase.CreateAsset(liquidMat, $"{Folder}/PotionLiquidMat.mat");
         }
         liquidMat.shader = litShader;
-        Color richRed = new Color(0.98f, 0.04f, 0.14f, 1f);
+        liquidMat.SetFloat("_Surface", 0f); // Opaque
+        liquidMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+        liquidMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+        liquidMat.SetInt("_ZWrite", 1);
+        liquidMat.SetFloat("_Cull", 2f);
+        Color richRed = new Color(0.96f, 0.03f, 0.12f, 1f);
         liquidMat.color = richRed;
         if (liquidMat.HasProperty("_BaseColor")) liquidMat.SetColor("_BaseColor", richRed);
-        liquidMat.SetFloat("_Metallic", 0.04f);
-        liquidMat.SetFloat("_Smoothness", 0.92f);
+        liquidMat.SetFloat("_Metallic", 0.02f);
+        liquidMat.SetFloat("_Smoothness", 0.85f);
         liquidMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Geometry;
+        liquidMat.SetOverrideTag("RenderType", "Opaque");
         if (liquidMat.HasProperty("_EmissionColor"))
         {
             liquidMat.EnableKeyword("_EMISSION");
-            liquidMat.SetColor("_EmissionColor", new Color(1.0f, 0.06f, 0.18f) * 2.5f);
+            liquidMat.SetColor("_EmissionColor", new Color(1.0f, 0.05f, 0.15f) * 2.2f);
         }
         EditorUtility.SetDirty(liquidMat);
 
@@ -477,7 +489,7 @@ public static class ItemPrefabBuilder
         return prefab;
     }
 
-    [MenuItem("GunQuest/Items/Setup Player 6 Slots Inventory", false, 51)]
+    [MenuItem("GunQuest/Items/Setup Player 5 Slots Inventory", false, 51)]
     public static void SetupActivePlayerInventory()
     {
         var player = Object.FindFirstObjectByType<PlayerWeapons>();
@@ -490,7 +502,7 @@ public static class ItemPrefabBuilder
         SetupPlayerInventory(player.gameObject);
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         EditorSceneManager.SaveOpenScenes();
-        Debug.Log("[ItemPrefabBuilder] Active player inventory successfully expanded to 6 slots!");
+        Debug.Log("[ItemPrefabBuilder] Active player inventory successfully configured to 5 slots!");
     }
 
     public static void SetupPlayerInventory(GameObject playerObj)
@@ -529,39 +541,53 @@ public static class ItemPrefabBuilder
         grenadeInst.transform.localScale = Vector3.one * 1.1f;
         grenadeInst.SetActive(false);
 
+        // Remove Shovel if present
+        for (int i = socket.childCount - 1; i >= 0; i--)
+        {
+            var child = socket.GetChild(i);
+            if (child.name.IndexOf("shovel", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                Object.DestroyImmediate(child.gameObject);
+            }
+        }
+
         var so = new SerializedObject(weapons);
         var slotsProp = so.FindProperty("slots");
-        slotsProp.arraySize = 6;
+        if (slotsProp.arraySize > 3 && slotsProp.GetArrayElementAtIndex(3).FindPropertyRelative("label").stringValue.IndexOf("shovel", System.StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            slotsProp.DeleteArrayElementAtIndex(3);
+        }
+        slotsProp.arraySize = 5;
 
-        // Slot 4: Bình Máu
+        // Slot 3: Bình Máu
+        var s3 = slotsProp.GetArrayElementAtIndex(3);
+        s3.FindPropertyRelative("label").stringValue = "Bình Máu";
+        s3.FindPropertyRelative("model").objectReferenceValue = potionInst;
+        s3.FindPropertyRelative("muzzle").objectReferenceValue = null;
+        s3.FindPropertyRelative("melee").boolValue = false;
+        s3.FindPropertyRelative("automatic").boolValue = false;
+        s3.FindPropertyRelative("kind").enumValueIndex = (int)SlotKind.Consumable;
+        s3.FindPropertyRelative("count").intValue = 3;
+        s3.FindPropertyRelative("maxCount").intValue = 5;
+        s3.FindPropertyRelative("damage").floatValue = 50f;
+        s3.FindPropertyRelative("cooldown").floatValue = 1.0f;
+        s3.FindPropertyRelative("range").floatValue = 0f;
+        s3.FindPropertyRelative("itemPrefab").objectReferenceValue = healVfxPrefab;
+
+        // Slot 4: Lựu Đạn
         var s4 = slotsProp.GetArrayElementAtIndex(4);
-        s4.FindPropertyRelative("label").stringValue = "Bình Máu";
-        s4.FindPropertyRelative("model").objectReferenceValue = potionInst;
+        s4.FindPropertyRelative("label").stringValue = "Lựu Đạn";
+        s4.FindPropertyRelative("model").objectReferenceValue = grenadeInst;
         s4.FindPropertyRelative("muzzle").objectReferenceValue = null;
         s4.FindPropertyRelative("melee").boolValue = false;
         s4.FindPropertyRelative("automatic").boolValue = false;
-        s4.FindPropertyRelative("kind").enumValueIndex = (int)SlotKind.Consumable;
+        s4.FindPropertyRelative("kind").enumValueIndex = (int)SlotKind.Throwable;
         s4.FindPropertyRelative("count").intValue = 3;
         s4.FindPropertyRelative("maxCount").intValue = 5;
-        s4.FindPropertyRelative("damage").floatValue = 50f;
-        s4.FindPropertyRelative("cooldown").floatValue = 1.0f;
-        s4.FindPropertyRelative("range").floatValue = 0f;
-        s4.FindPropertyRelative("itemPrefab").objectReferenceValue = healVfxPrefab;
-
-        // Slot 5: Lựu Đạn
-        var s5 = slotsProp.GetArrayElementAtIndex(5);
-        s5.FindPropertyRelative("label").stringValue = "Lựu Đạn";
-        s5.FindPropertyRelative("model").objectReferenceValue = grenadeInst;
-        s5.FindPropertyRelative("muzzle").objectReferenceValue = null;
-        s5.FindPropertyRelative("melee").boolValue = false;
-        s5.FindPropertyRelative("automatic").boolValue = false;
-        s5.FindPropertyRelative("kind").enumValueIndex = (int)SlotKind.Throwable;
-        s5.FindPropertyRelative("count").intValue = 3;
-        s5.FindPropertyRelative("maxCount").intValue = 5;
-        s5.FindPropertyRelative("damage").floatValue = 120f;
-        s5.FindPropertyRelative("cooldown").floatValue = 1.2f;
-        s5.FindPropertyRelative("range").floatValue = 6.5f;
-        s5.FindPropertyRelative("itemPrefab").objectReferenceValue = thrownPrefab;
+        s4.FindPropertyRelative("damage").floatValue = 120f;
+        s4.FindPropertyRelative("cooldown").floatValue = 1.2f;
+        s4.FindPropertyRelative("range").floatValue = 6.5f;
+        s4.FindPropertyRelative("itemPrefab").objectReferenceValue = thrownPrefab;
 
         so.ApplyModifiedProperties();
         EditorUtility.SetDirty(weapons);

@@ -12,14 +12,19 @@ public class WeaponEffects : MonoBehaviour
     [Header("Appearance")]
     [SerializeField] private Color flashColor = new Color(1f, 0.55f, 0.12f);
     [SerializeField] private Color tracerColor = new Color(1f, 0.85f, 0.25f);
-    [SerializeField] private float tracerWidth = 0.035f;
-    [SerializeField] private float effectDuration = 0.06f;
+    [SerializeField] private float tracerWidth = 0.045f;
+    [SerializeField] private float effectDuration = 0.07f;
 
     private static Material effectMaterial;
+    private static GameObject muzzleFlashPrefab;
+    private static GameObject impactPrefab;
+
     private Transform muzzle;
     private Light muzzleLight;
     private LineRenderer tracer;
     private ParticleSystem impactEffect;
+    private GameObject muzzleVfxInstance;
+    private ParticleSystem[] muzzleParticleSystems;
     private Coroutine hideRoutine;
 
     public void Initialize(Transform muzzlePoint)
@@ -28,8 +33,16 @@ public class WeaponEffects : MonoBehaviour
         EnsureEffects();
         if (hideRoutine != null) StopCoroutine(hideRoutine);
         hideRoutine = null;
-        muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-        muzzleFlash.transform.SetParent(muzzle != null ? muzzle : transform, false);
+        if (muzzleFlash != null)
+        {
+            muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            muzzleFlash.transform.SetParent(muzzle != null ? muzzle : transform, false);
+        }
+        if (muzzleVfxInstance != null)
+        {
+            muzzleVfxInstance.transform.SetParent(muzzle != null ? muzzle : transform, false);
+            muzzleVfxInstance.SetActive(false);
+        }
         muzzleLight.transform.SetParent(muzzle != null ? muzzle : transform, false);
         muzzleLight.enabled = false;
         tracer.enabled = false;
@@ -43,8 +56,25 @@ public class WeaponEffects : MonoBehaviour
         Vector3 start = muzzle != null ? muzzle.position : transform.position + transform.forward;
         Vector3 direction = hitPoint - start;
         if (direction.sqrMagnitude < 0.001f) direction = transform.forward;
-        muzzleFlash.transform.SetPositionAndRotation(start, Quaternion.LookRotation(direction));
-        muzzleFlash.Emit(5);
+
+        if (muzzleVfxInstance != null)
+        {
+            muzzleVfxInstance.transform.SetPositionAndRotation(start, Quaternion.LookRotation(direction));
+            muzzleVfxInstance.SetActive(true);
+            for (int i = 0; i < muzzleParticleSystems.Length; i++)
+            {
+                if (muzzleParticleSystems[i] != null)
+                {
+                    muzzleParticleSystems[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    muzzleParticleSystems[i].Play(true);
+                }
+            }
+        }
+        else if (muzzleFlash != null)
+        {
+            muzzleFlash.transform.SetPositionAndRotation(start, Quaternion.LookRotation(direction));
+            muzzleFlash.Emit(8);
+        }
 
         muzzleLight.transform.position = start;
         muzzleLight.enabled = true;
@@ -55,8 +85,18 @@ public class WeaponEffects : MonoBehaviour
 
         if (hitSomething)
         {
-            impactEffect.transform.SetPositionAndRotation(hitPoint, Quaternion.LookRotation(hitNormal));
-            impactEffect.Emit(8);
+            if (impactPrefab != null)
+            {
+                Quaternion rot = hitNormal.sqrMagnitude > 0.001f ? Quaternion.LookRotation(hitNormal) : Quaternion.identity;
+                GameObject imp = Instantiate(impactPrefab, hitPoint, rot);
+                imp.transform.localScale = Vector3.one * 0.55f;
+                Destroy(imp, 1.2f);
+            }
+            else if (impactEffect != null)
+            {
+                impactEffect.transform.SetPositionAndRotation(hitPoint, Quaternion.LookRotation(hitNormal));
+                impactEffect.Emit(12);
+            }
         }
 
         audioSource.PlayOneShot(shotSound, GameSettings.Instance != null ? GameSettings.Instance.sfxVolume : 1f);
@@ -66,6 +106,18 @@ public class WeaponEffects : MonoBehaviour
 
     private void EnsureEffects()
     {
+        if (muzzleFlashPrefab == null) muzzleFlashPrefab = Resources.Load<GameObject>("VFX/vfx_MuzzleFlash_01");
+        if (impactPrefab == null) impactPrefab = Resources.Load<GameObject>("VFX/vfx_Impact_01");
+
+        if (muzzleVfxInstance == null && muzzleFlashPrefab != null)
+        {
+            muzzleVfxInstance = Instantiate(muzzleFlashPrefab, muzzle != null ? muzzle : transform);
+            muzzleVfxInstance.name = "vfx_MuzzleFlash_Instance";
+            muzzleVfxInstance.transform.localScale = Vector3.one * 0.4f;
+            muzzleParticleSystems = muzzleVfxInstance.GetComponentsInChildren<ParticleSystem>(true);
+            muzzleVfxInstance.SetActive(false);
+        }
+
         if (muzzleFlash == null) muzzleFlash = CreateParticles("MuzzleFlash", true);
         if (muzzleLight == null) muzzleLight = CreateMuzzleLight();
         if (tracer == null) tracer = CreateTracer();
@@ -144,9 +196,22 @@ public class WeaponEffects : MonoBehaviour
         line.useWorldSpace = true;
         line.positionCount = 2;
         line.startWidth = tracerWidth;
-        line.endWidth = 0.005f;
-        line.startColor = tracerColor;
-        line.endColor = new Color(tracerColor.r, tracerColor.g, tracerColor.b, 0f);
+        line.endWidth = 0.015f;
+
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new GradientColorKey[] {
+                new GradientColorKey(new Color(2.5f, 2.2f, 1.4f), 0.0f),  // Blinding white-gold core
+                new GradientColorKey(new Color(2.0f, 0.9f, 0.2f), 0.4f),  // Fiery amber trail
+                new GradientColorKey(new Color(1.2f, 0.3f, 0.05f), 1.0f)  // Crimson tip
+            },
+            new GradientAlphaKey[] {
+                new GradientAlphaKey(1.0f, 0.0f),
+                new GradientAlphaKey(0.85f, 0.7f),
+                new GradientAlphaKey(0.0f, 1.0f)
+            }
+        );
+        line.colorGradient = gradient;
         line.material = GetEffectMaterial();
         line.alignment = LineAlignment.View;
         line.shadowCastingMode = ShadowCastingMode.Off;

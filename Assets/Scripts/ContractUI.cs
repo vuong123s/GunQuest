@@ -42,6 +42,9 @@ public class ContractUI : MonoBehaviour
     private GameObject boardBody, settingsPanel;
     private Button settingsBoardBtn;
     private bool boardSettingsOpen = false;
+    private GameObject aboutDialog;
+    public bool IsAboutOpen => aboutDialog != null && aboutDialog.activeSelf;
+    private Button aboutBoardBtn, settingsAboutBoard, settingsAboutPause;
 
     // Settings UI elements
     private Slider masterSlider, sfxSlider, sensSlider, fovSlider;
@@ -61,6 +64,10 @@ public class ContractUI : MonoBehaviour
     private TMP_Text damageValue, damagePrice, magazineValue, magazinePrice;
     private TMP_Text shopTabUpgradeText, shopTabSupplyText;
     private Button shopTabUpgradeBtn, shopTabSupplyBtn;
+    private int selectedMapIndex = 0;
+    private int lastSelectedMap = -1;
+    private Button map1Btn, map2Btn;
+    private TMP_Text map1BtnText, map2BtnText;
     private GameObject upgradesGroup, suppliesGroup;
     private bool showingSuppliesTab = false;
     private Button buyPotionBtn, buyGrenadeBtn, buyPistolAmmoBtn, buyRifleAmmoBtn;
@@ -91,6 +98,7 @@ public class ContractUI : MonoBehaviour
 
         LoadPixelSprites();
         EnsureUIInput();
+        selectedMapIndex = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "IceboundPass" ? 1 : 0;
 
         var root = new GameObject("ContractCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         root.transform.SetParent(transform, false);
@@ -157,9 +165,10 @@ public class ContractUI : MonoBehaviour
         Label(funds.transform, "Caption", "NGÂN QUỸ", new Vector2(48, -10), new Vector2(170, 22), 15, Muted);
         wallet = Label(funds.transform, "Credits", "", new Vector2(48, -32), new Vector2(170, 36), 26, Accent, true);
 
-        settingsBoardBtn = ButtonAt(shell, "SettingsBtn", "CÀI ĐẶT (ESC)", new Vector2(740, 0), new Vector2(175, 44), Tile, Mint, () => ToggleSettingsFromBoard(), 16);
-        ButtonAt(shell, "Quit", "THOÁT GAME", new Vector2(935, 0), new Vector2(185, 44), Tile, White, () => game.Quit(), 16);
-        completed = Label(shell, "Completed", "", new Vector2(740, -56), new Vector2(380, 26), 15, Muted);
+        settingsBoardBtn = ButtonAt(shell, "SettingsBtn", "CÀI ĐẶT", new Vector2(720, 0), new Vector2(125, 44), Tile, Mint, () => ToggleSettingsFromBoard(), 16);
+        aboutBoardBtn = ButtonAt(shell, "AboutBtn", "ABOUT", new Vector2(855, 0), new Vector2(120, 44), Tile, Accent, () => OpenAbout(), 16);
+        ButtonAt(shell, "Quit", "THOÁT GAME", new Vector2(985, 0), new Vector2(135, 44), Tile, White, () => game.Quit(), 16);
+        completed = Label(shell, "Completed", "", new Vector2(720, -56), new Vector2(400, 26), 15, Muted); completed.alignment = TextAlignmentOptions.Right;
         Image(shell, "HeaderLine", Line, new Vector2(0, -94), new Vector2(1120, 1), TopLeft);
 
         // Board Body Container (holds mission, shop, summary)
@@ -168,65 +177,68 @@ public class ContractUI : MonoBehaviour
         var mission = SlicedImage(boardBody.transform, "MissionPaper", spritePanel, new Color(.95f, .94f, .90f), new Vector2(0, -112), new Vector2(700, 366), TopLeft, 0.5f);
         SlicedImage(mission.transform, "MissionInset", spritePanelInset, new Color(1f, 1f, 1f, .55f), new Vector2(10, -10), new Vector2(680, 346), TopLeft, 0.5f);
         missionStripe = Image(mission.transform, "StateStripe", Accent, new Vector2(10, -10), new Vector2(6, 346), TopLeft);
-        eyebrow = Label(mission.transform, "State", "", new Vector2(34, -24), new Vector2(620, 25), 16, new Color(.34f, .39f, .39f), true);
-        missionTitle = Label(mission.transform, "MissionTitle", "", new Vector2(32, -65), new Vector2(644, 84), 34, Ink, true);
-        missionTitle.enableAutoSizing = true; missionTitle.fontSizeMin = 28; missionTitle.fontSizeMax = 34;
-        briefing = Label(mission.transform, "Briefing", "", new Vector2(34, -154), new Vector2(640, 108), 22, Ink);
-        Image(mission.transform, "Divider", new Color(.65f, .68f, .62f), new Vector2(30, -278), new Vector2(640, 1), TopLeft);
-        rewardCaption = Label(mission.transform, "RewardCaption", "", new Vector2(34, -297), new Vector2(335, 23), 15, new Color(.34f, .39f, .39f), true);
-        rewardValue = Label(mission.transform, "Reward", "", new Vector2(32, -320), new Vector2(270, 45), 34, Ink, true);
-        rewardHint = Label(mission.transform, "RewardHint", "", new Vector2(320, -307), new Vector2(350, 52), 18, new Color(.34f, .39f, .39f));
+        eyebrow = Label(mission.transform, "State", "", new Vector2(30, -18), new Vector2(640, 22), 15, new Color(.34f, .39f, .39f), true);
 
-        start = ButtonAt(boardBody.transform, "AcceptContract", "NHẬN HỢP ĐỒNG   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => game.AcceptContract(), 24);
+        // 2 Map Selection Buttons side-by-side inside Left Panel
+        map1Btn = ButtonAt(mission.transform, "Map1Select", "MAP 1: THUNG LŨNG LÁ ĐỎ", new Vector2(26, -42), new Vector2(318, 50), Tile, White, () => SelectMap(0), 16);
+        map1BtnText = map1Btn.GetComponentInChildren<TMP_Text>();
+
+        map2Btn = ButtonAt(mission.transform, "Map2Select", "MAP 2: ĐÈO BĂNG GIÁ", new Vector2(352, -42), new Vector2(318, 50), Tile, White, () => SelectMap(1), 16);
+        map2BtnText = map2Btn.GetComponentInChildren<TMP_Text>();
+
+        missionTitle = Label(mission.transform, "MissionTitle", "", new Vector2(30, -100), new Vector2(644, 38), 26, Ink, true);
+        missionTitle.enableAutoSizing = true; missionTitle.fontSizeMin = 20; missionTitle.fontSizeMax = 26;
+        briefing = Label(mission.transform, "Briefing", "", new Vector2(30, -142), new Vector2(640, 118), 19, Ink);
+        Image(mission.transform, "Divider", new Color(.65f, .68f, .62f), new Vector2(30, -266), new Vector2(640, 1), TopLeft);
+        rewardCaption = Label(mission.transform, "RewardCaption", "", new Vector2(34, -280), new Vector2(335, 20), 14, new Color(.34f, .39f, .39f), true);
+        rewardValue = Label(mission.transform, "Reward", "", new Vector2(32, -300), new Vector2(270, 44), 30, Ink, true);
+        rewardHint = Label(mission.transform, "RewardHint", "", new Vector2(310, -288), new Vector2(360, 50), 16, new Color(.34f, .39f, .39f));
+
+        start = ButtonAt(boardBody.transform, "AcceptContract", "NHẬN HỢP ĐỒNG   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => OnStartButtonClicked(), 24);
         resume = ButtonAt(boardBody.transform, "Resume", "TIẾP TỤC LƯỢT SĂN   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => game.Resume(), 24);
-        retry = ButtonAt(boardBody.transform, "Retry", "CHƠI LẠI   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => game.Retry(), 24);
+        retry = ButtonAt(boardBody.transform, "Retry", "CHƠI LẠI   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => { if (game.State == ContractGame.Phase.Won) game.NextStage(); else game.Retry(); }, 24);
 
+        // Right Panel (PreparationPanel) - NO sideTitle, tabs sit right at top
         var side = SlicedImage(boardBody.transform, "PreparationPanel", spritePanel, Color.white, new Vector2(724, -112), new Vector2(396, 444), TopLeft, 0.5f);
-        sideTitle = Label(side.transform, "SideTitle", "", new Vector2(24, -16), new Vector2(348, 28), 20, White, true);
 
-        // Shop Tabs (NÂNG CẤP | TIỆM VẬT PHẨM)
-        var tabContainer = Group("ShopTabs", side.transform);
-        var rTabs = (RectTransform)tabContainer.transform;
-        rTabs.anchorMin = rTabs.anchorMax = TopLeft;
-        rTabs.anchoredPosition = new Vector2(24, -48);
-        rTabs.sizeDelta = new Vector2(348, 36);
-
-        shopTabUpgradeBtn = ButtonAt(tabContainer.transform, "TabUpgrades", "NÂNG CẤP", Vector2.zero, new Vector2(170, 34), Tile, Accent, () => SetShopTab(false), 15);
+        // Shop Tabs (NÂNG CẤP | MUA VẬT PHẨM) positioned cleanly side-by-side at the top
+        shop = Group("ShopContainer", side.transform); shopTabUpgradeBtn = ButtonAt(shop.transform, "TabUpgrades", "NÂNG CẤP", new Vector2(16, -16), new Vector2(178, 38), Tile, Accent, () => SetShopTab(false), 16);
         shopTabUpgradeText = shopTabUpgradeBtn.GetComponentInChildren<TMP_Text>();
 
-        shopTabSupplyBtn = ButtonAt(tabContainer.transform, "TabSupplies", "MUA VẬT PHẨM", new Vector2(178, 0), new Vector2(170, 34), Tile, White, () => SetShopTab(true), 15);
+        shopTabSupplyBtn = ButtonAt(shop.transform, "TabSupplies", "MUA VẬT PHẨM", new Vector2(202, -16), new Vector2(178, 38), Tile, White, () => SetShopTab(true), 16);
         shopTabSupplyText = shopTabSupplyBtn.GetComponentInChildren<TMP_Text>();
 
-        shop = Group("ShopContainer", side.transform);
+
 
         // 1. Upgrades Tab Content
         upgradesGroup = Group("UpgradesGroup", shop.transform);
-        damageUpgrade = UpgradeAt(upgradesGroup.transform, "DamageUpgrade", "SÁT THƯƠNG", -92, true, out damageValue, out damagePrice);
-        magazineUpgrade = UpgradeAt(upgradesGroup.transform, "MagazineUpgrade", "BĂNG ĐẠN", -214, false, out magazineValue, out magazinePrice);
-        currentGear = Label(upgradesGroup.transform, "CurrentGear", "", new Vector2(24, -348), new Vector2(348, 64), 16, Muted);
+        damageUpgrade = UpgradeAt(upgradesGroup.transform, "DamageUpgrade", "SÁT THƯƠNG", -66, true, out damageValue, out damagePrice);
+        magazineUpgrade = UpgradeAt(upgradesGroup.transform, "MagazineUpgrade", "BĂNG ĐẠN", -186, false, out magazineValue, out magazinePrice);
+        currentGear = Label(upgradesGroup.transform, "CurrentGear", "", new Vector2(24, -308), new Vector2(348, 64), 16, Muted);
 
         // 2. Supplies Tab Content (Bình Máu, Lựu Đạn, Đạn Súng Lục, Đạn Rifle)
         suppliesGroup = Group("SuppliesGroup", shop.transform);
-        buyPotionBtn = SupplyItemAt(suppliesGroup.transform, "BuyPotion", "BÌNH MÁU (+50 HP)", -92, spriteIconPotion, () => { game.BuyPotion(); Refresh(); }, out potionCountText, out potionPriceText);
-        buyGrenadeBtn = SupplyItemAt(suppliesGroup.transform, "BuyGrenade", "LỰU ĐẠN NỔ (120 DMG)", -172, spriteIconBomb, () => { game.BuyGrenade(); Refresh(); }, out grenadeCountText, out grenadePriceText);
-        buyPistolAmmoBtn = SupplyItemAt(suppliesGroup.transform, "BuyPistolAmmo", "ĐẠN SÚNG LỤC (+30)", -252, spriteIconPistol, () => { game.BuyPistolAmmo(); Refresh(); }, out pistolAmmoCountText, out pistolAmmoPriceText);
-        buyRifleAmmoBtn = SupplyItemAt(suppliesGroup.transform, "BuyRifleAmmo", "ĐẠN SÚNG TRƯỜNG (+60)", -332, spriteIconRifle, () => { game.BuyRifleAmmo(); Refresh(); }, out rifleAmmoCountText, out rifleAmmoPriceText);
+        buyPotionBtn = SupplyItemAt(suppliesGroup.transform, "BuyPotion", "BÌNH MÁU (+50 HP)", -64, spriteIconPotion, () => { game.BuyPotion(); Refresh(); }, out potionCountText, out potionPriceText);
+        buyGrenadeBtn = SupplyItemAt(suppliesGroup.transform, "BuyGrenade", "LỰU ĐẠN NỔ (120 DMG)", -140, spriteIconBomb, () => { game.BuyGrenade(); Refresh(); }, out grenadeCountText, out grenadePriceText);
+        buyPistolAmmoBtn = SupplyItemAt(suppliesGroup.transform, "BuyPistolAmmo", "ĐẠN SÚNG LỤC (+30)", -216, spriteIconPistol, () => { game.BuyPistolAmmo(); Refresh(); }, out pistolAmmoCountText, out pistolAmmoPriceText);
+        buyRifleAmmoBtn = SupplyItemAt(suppliesGroup.transform, "BuyRifleAmmo", "ĐẠN SÚNG TRƯỜNG (+60)", -292, spriteIconRifle, () => { game.BuyRifleAmmo(); Refresh(); }, out rifleAmmoCountText, out rifleAmmoPriceText);
 
         SetShopTab(false);
 
         summary = Group("RunSummary", side.transform);
-        Label(summary.transform, "MissionCaption", "KHU VỰC ĐANG SĂN", new Vector2(24, -126), new Vector2(348, 22), 15, Mint, true);
-        summaryMission = Label(summary.transform, "SummaryMission", "", new Vector2(24, -159), new Vector2(348, 72), 24, White, true);
-        summaryGear = Label(summary.transform, "SummaryGear", "", new Vector2(24, -238), new Vector2(348, 44), 18, Muted);
-        pausedRetry = ButtonAt(summary.transform, "RestartPaused", "CHƠI LẠI TỪ ĐẦU", new Vector2(24, -300), new Vector2(348, 48), Tile, White, () => game.Retry(), 18);
-        board = ButtonAt(summary.transform, "ReturnToBoard", "VỀ BẢNG HỢP ĐỒNG", new Vector2(24, -366), new Vector2(348, 48), Tile, White, () => game.ReturnToBoard(), 18);
+        Label(summary.transform, "MissionCaption", "KHU VỰC ĐANG SĂN", new Vector2(24, -20), new Vector2(348, 22), 15, Mint, true);
+        summaryMission = Label(summary.transform, "SummaryMission", "", new Vector2(24, -50), new Vector2(348, 72), 24, White, true);
+        summaryGear = Label(summary.transform, "SummaryGear", "", new Vector2(24, -130), new Vector2(348, 44), 18, Muted);
+        pausedRetry = ButtonAt(summary.transform, "RestartPaused", "CHƠI LẠI TỪ ĐẦU", new Vector2(24, -195), new Vector2(348, 48), Tile, White, () => game.Retry(), 18);
+        board = ButtonAt(summary.transform, "ReturnToBoard", "VỀ BẢNG HỢP ĐỒNG", new Vector2(24, -255), new Vector2(348, 48), Tile, White, () => game.ReturnToBoard(), 18);
 
         // Settings Panel (Shown during Pause or when opened via Settings button)
         BuildSettingsPanel(shell);
+        BuildAboutDialog(menu.transform);
 
         Image(shell, "FooterLine", Line, new Vector2(0, -581), new Vector2(1120, 1), TopLeft);
         var help = Label(shell, "Controls",
-            "WASD  Di chuyển     •     Chuột trái  Bắn / Dùng     •     R  Nạp đạn     •     1–6 / Cuộn chuột  Đổi trang bị\nEnter  Mở Bảng Hợp Đồng & Cửa Hàng     •     Esc  Cài đặt & Tạm dừng",
+            "WASD  Di chuyển     •     Chuột trái  Bắn / Dùng     •     R  Nạp đạn     •     1–5 / Cuộn chuột  Đổi trang bị\nEnter  Mở Bảng Hợp Đồng & Cửa Hàng     •     Esc  Cài đặt & Tạm dừng",
             new Vector2(0, -597), new Vector2(1120, 43), 16, Muted);
         help.alignment = TextAlignmentOptions.Top;
     }
@@ -252,35 +264,26 @@ public class ContractUI : MonoBehaviour
         Image(leftCard.transform, "Divider", Line, new Vector2(16, -40), new Vector2(513, 1), TopLeft);
 
         // Item 1: Master Volume
-        Label(leftCard.transform, "MasterVolLabel", "ÂM LƯỢNG TỔNG (MASTER)", new Vector2(20, -50), new Vector2(280, 24), 15, White, true);
-        masterValText = Label(leftCard.transform, "MasterVolVal", "100%", new Vector2(360, -50), new Vector2(150, 24), 16, Accent, true);
+        Label(leftCard.transform, "MasterVolLabel", "ÂM LƯỢNG TỔNG", new Vector2(20, -50), new Vector2(280, 24), 16, White, true);
+        masterValText = Label(leftCard.transform, "MasterVolVal", "100%", new Vector2(340, -50), new Vector2(175, 24), 16, Accent, true);
         masterValText.alignment = TextAlignmentOptions.Right;
-        ButtonAt(leftCard.transform, "MasterDown", "-", new Vector2(20, -78), new Vector2(34, 30), Tile, White, () => ChangeMasterVolume(-0.05f), 20);
-        masterSlider = CreatePixelSlider(leftCard.transform, "MasterSlider", 0f, 1f, 1f, new Vector2(60, -80), new Vector2(410, 26), OnMasterSliderChanged);
-        ButtonAt(leftCard.transform, "MasterUp", "+", new Vector2(476, -78), new Vector2(34, 30), Tile, White, () => ChangeMasterVolume(0.05f), 20);
+        masterSlider = CreatePixelSlider(leftCard.transform, "MasterSlider", 0f, 1f, 1f, new Vector2(20, -78), new Vector2(505, 26), OnMasterSliderChanged);
 
         // Item 2: SFX Volume
-        Label(leftCard.transform, "SfxVolLabel", "ÂM LƯỢNG HIỆU ỨNG (SFX)", new Vector2(20, -118), new Vector2(280, 24), 15, White, true);
-        sfxValText = Label(leftCard.transform, "SfxVolVal", "80%", new Vector2(360, -118), new Vector2(150, 24), 16, Accent, true);
+        Label(leftCard.transform, "SfxVolLabel", "ÂM LƯỢNG HIỆU ỨNG (SFX)", new Vector2(20, -116), new Vector2(280, 24), 16, White, true);
+        sfxValText = Label(leftCard.transform, "SfxVolVal", "80%", new Vector2(340, -116), new Vector2(175, 24), 16, Accent, true);
         sfxValText.alignment = TextAlignmentOptions.Right;
-        ButtonAt(leftCard.transform, "SfxDown", "-", new Vector2(20, -146), new Vector2(34, 30), Tile, White, () => ChangeSfxVolume(-0.05f), 20);
-        sfxSlider = CreatePixelSlider(leftCard.transform, "SfxSlider", 0f, 1f, 0.8f, new Vector2(60, -148), new Vector2(410, 26), OnSfxSliderChanged);
-        ButtonAt(leftCard.transform, "SfxUp", "+", new Vector2(476, -146), new Vector2(34, 30), Tile, White, () => ChangeSfxVolume(0.05f), 20);
-
-        Image(leftCard.transform, "Divider2", Line, new Vector2(16, -186), new Vector2(513, 1), TopLeft);
+        sfxSlider = CreatePixelSlider(leftCard.transform, "SfxSlider", 0f, 1f, 0.8f, new Vector2(20, -144), new Vector2(505, 26), OnSfxSliderChanged);
 
         // Item 3: Mouse Sensitivity
-        Label(leftCard.transform, "SensLabel", "ĐỘ NHẠY CHUỘT", new Vector2(20, -196), new Vector2(250, 24), 15, White, true);
-        sensValText = Label(leftCard.transform, "SensVal", "1.0x (0.12)", new Vector2(320, -196), new Vector2(190, 24), 16, Accent, true);
+        Label(leftCard.transform, "SensLabel", "ĐỘ NHẠY CHUỘT", new Vector2(20, -182), new Vector2(250, 24), 16, White, true);
+        sensValText = Label(leftCard.transform, "SensVal", "1.0x (0.12)", new Vector2(300, -182), new Vector2(215, 24), 16, Accent, true);
         sensValText.alignment = TextAlignmentOptions.Right;
-        ButtonAt(leftCard.transform, "SensDown", "-", new Vector2(20, -224), new Vector2(34, 30), Tile, White, () => ChangeSensitivity(-0.01f), 20);
-        sensSlider = CreatePixelSlider(leftCard.transform, "SensSlider", 0.02f, 0.36f, 0.12f, new Vector2(60, -226), new Vector2(410, 26), OnSensitivitySliderChanged);
-        ButtonAt(leftCard.transform, "SensUp", "+", new Vector2(476, -224), new Vector2(34, 30), Tile, White, () => ChangeSensitivity(0.01f), 20);
+        sensSlider = CreatePixelSlider(leftCard.transform, "SensSlider", 0.02f, 0.36f, 0.12f, new Vector2(20, -210), new Vector2(505, 26), OnSensitivitySliderChanged);
 
         // Item 4: Invert Y Axis
-        Label(leftCard.transform, "InvertLabel", "ĐẢO TRỤC CHUỘT Y", new Vector2(20, -270), new Vector2(280, 24), 15, White, true);
-        Label(leftCard.transform, "InvertSub", "Đảo hướng camera khi nhìn lên / xuống", new Vector2(20, -294), new Vector2(290, 20), 13, Muted);
-        var invertBtn = ButtonAt(leftCard.transform, "InvertBtn", "", new Vector2(320, -270), new Vector2(190, 44), Tile, White, ToggleInvertY, 15);
+        Label(leftCard.transform, "InvertLabel", "ĐẢO TRỤC CHUỘT Y", new Vector2(20, -260), new Vector2(270, 36), 16, White, true);
+        var invertBtn = ButtonAt(leftCard.transform, "InvertBtn", "", new Vector2(300, -256), new Vector2(225, 42), Tile, White, ToggleInvertY, 15);
         invertYBg = invertBtn.GetComponent<UIImage>();
         invertYText = invertBtn.GetComponentInChildren<TMP_Text>();
 
@@ -292,42 +295,132 @@ public class ContractUI : MonoBehaviour
         Image(rightCard.transform, "Divider", Line, new Vector2(16, -40), new Vector2(513, 1), TopLeft);
 
         // Item 5: Field of View (FOV)
-        Label(rightCard.transform, "FovLabel", "GÓC NHÌN (FIELD OF VIEW)", new Vector2(20, -50), new Vector2(280, 24), 15, White, true);
-        fovValText = Label(rightCard.transform, "FovVal", "75°", new Vector2(360, -50), new Vector2(150, 24), 16, Accent, true);
+        Label(rightCard.transform, "FovLabel", "GÓC NHÌN (FIELD OF VIEW)", new Vector2(20, -50), new Vector2(280, 24), 16, White, true);
+        fovValText = Label(rightCard.transform, "FovVal", "75°", new Vector2(340, -50), new Vector2(175, 24), 16, Accent, true);
         fovValText.alignment = TextAlignmentOptions.Right;
-        ButtonAt(rightCard.transform, "FovDown", "-", new Vector2(20, -78), new Vector2(34, 30), Tile, White, () => ChangeFOV(-1f), 20);
-        fovSlider = CreatePixelSlider(rightCard.transform, "FovSlider", 60f, 105f, 75f, new Vector2(60, -80), new Vector2(410, 26), OnFOVSliderChanged);
-        ButtonAt(rightCard.transform, "FovUp", "+", new Vector2(476, -78), new Vector2(34, 30), Tile, White, () => ChangeFOV(1f), 20);
+        fovSlider = CreatePixelSlider(rightCard.transform, "FovSlider", 60f, 105f, 75f, new Vector2(20, -78), new Vector2(505, 26), OnFOVSliderChanged);
 
         // Item 6: Quality Level
-        Label(rightCard.transform, "QualityLabel", "CHẤT LƯỢNG ĐỒ HỌA", new Vector2(20, -122), new Vector2(260, 24), 15, White, true);
-        Label(rightCard.transform, "QualitySub", "Chi tiết vật thể và đổ bóng", new Vector2(20, -146), new Vector2(260, 20), 13, Muted);
-        var qualityBtn = ButtonAt(rightCard.transform, "QualityBtn", "", new Vector2(295, -122), new Vector2(215, 42), Tile, Mint, CycleQuality, 15);
+        Label(rightCard.transform, "QualityLabel", "CHẤT LƯỢNG ĐỒ HỌA", new Vector2(20, -122), new Vector2(260, 24), 16, White, true);
+        var qualityBtn = ButtonAt(rightCard.transform, "QualityBtn", "", new Vector2(295, -116), new Vector2(230, 42), Tile, Mint, CycleQuality, 15);
         qualityText = qualityBtn.GetComponentInChildren<TMP_Text>();
 
         // Item 7: Screen Mode
-        Label(rightCard.transform, "ScreenLabel", "CHẾ ĐỘ MÀN HÌNH", new Vector2(20, -182), new Vector2(260, 24), 15, White, true);
-        Label(rightCard.transform, "ScreenSub", "Toàn màn hình hoặc cửa sổ", new Vector2(20, -206), new Vector2(260, 20), 13, Muted);
-        var screenBtn = ButtonAt(rightCard.transform, "ScreenBtn", "", new Vector2(295, -182), new Vector2(215, 42), Tile, White, ToggleFullscreen, 15);
+        Label(rightCard.transform, "ScreenLabel", "CHẾ ĐỘ MÀN HÌNH", new Vector2(20, -176), new Vector2(260, 24), 16, White, true);
+        var screenBtn = ButtonAt(rightCard.transform, "ScreenBtn", "", new Vector2(295, -170), new Vector2(230, 42), Tile, White, ToggleFullscreen, 15);
         fullscreenText = screenBtn.GetComponentInChildren<TMP_Text>();
 
-        Image(rightCard.transform, "Divider3", Line, new Vector2(16, -238), new Vector2(513, 1), TopLeft);
+        Image(rightCard.transform, "Divider3", Line, new Vector2(16, -226), new Vector2(513, 1), TopLeft);
 
-        // Item 8: Reset to Defaults & Tips
-        settingsReset = ButtonAt(rightCard.transform, "ResetBtn", "KHÔI PHỤC MẶC ĐỊNH", new Vector2(20, -252), new Vector2(250, 42), Tile, White, ResetSettingsToDefaults, 15);
-        var note = Label(rightCard.transform, "AutoSaveNote", "✓ Cài đặt được áp dụng tức thì & lưu tự động.\nNhấn Esc để tiếp tục chơi.", new Vector2(20, -304), new Vector2(490, 40), 13, Mint);
+        // Item 8: Reset to Defaults & About in Settings
+        settingsReset = ButtonAt(rightCard.transform, "ResetBtn", "MẶC ĐỊNH", new Vector2(20, -244), new Vector2(235, 44), Tile, White, ResetSettingsToDefaults, 15);
+        ButtonAt(rightCard.transform, "AboutSettingBtn", "ABOUT (TÁC GIẢ)", new Vector2(275, -244), new Vector2(250, 44), Tile, Accent, () => OpenAbout(), 15);
+        var note = Label(rightCard.transform, "AutoSaveNote", "Cài đặt được áp dụng tức thì & lưu tự động.", new Vector2(20, -300), new Vector2(505, 22), 14, Mint);
         note.alignment = TextAlignmentOptions.TopLeft;
 
         // ------------------ BOTTOM ACTION BAR ------------------
-        settingsResume = ButtonAt(settingsPanel.transform, "ResumeAction", "TIẾP TỤC (ESC)   ▶", new Vector2(0, -412), new Vector2(360, 56), Accent, Ink, () => game.Resume(), 22);
-        settingsRetry = ButtonAt(settingsPanel.transform, "RetryAction", "CHƠI LẠI", new Vector2(380, -412), new Vector2(220, 56), Tile, White, () => game.Retry(), 18);
-        settingsBoard = ButtonAt(settingsPanel.transform, "BoardAction", "VỀ BẢNG HỢP ĐỒNG", new Vector2(620, -412), new Vector2(260, 56), Tile, White, () => game.ReturnToBoard(), 18);
-        settingsQuit = ButtonAt(settingsPanel.transform, "QuitAction", "THOÁT GAME", new Vector2(900, -412), new Vector2(220, 56), Tile, Danger, () => game.Quit(), 18);
+        settingsResume = ButtonAt(settingsPanel.transform, "ResumeAction", "TIẾP TỤC (ESC)   ▶", new Vector2(0, -412), new Vector2(260, 56), Accent, Ink, () => game.Resume(), 20);
+        settingsRetry = ButtonAt(settingsPanel.transform, "RetryAction", "CHƠI LẠI", new Vector2(275, -412), new Vector2(165, 56), Tile, White, () => game.Retry(), 18);
+        settingsBoard = ButtonAt(settingsPanel.transform, "BoardAction", "VỀ BẢNG HỢP ĐỒNG", new Vector2(455, -412), new Vector2(245, 56), Tile, White, () => game.ReturnToBoard(), 18);
+        settingsAboutPause = ButtonAt(settingsPanel.transform, "AboutPauseAction", "ABOUT", new Vector2(715, -412), new Vector2(165, 56), Tile, Mint, () => OpenAbout(), 18);
+        settingsQuit = ButtonAt(settingsPanel.transform, "QuitAction", "THOÁT GAME", new Vector2(895, -412), new Vector2(225, 56), Tile, Danger, () => game.Quit(), 18);
 
         // When opened from Board:
-        settingsClose = ButtonAt(settingsPanel.transform, "CloseAction", "LƯU & ĐÓNG CÀI ĐẶT (ESC)   ✔", new Vector2(0, -412), new Vector2(440, 56), Accent, Ink, () => ToggleSettingsFromBoard(), 22);
+        settingsClose = ButtonAt(settingsPanel.transform, "CloseAction", "LƯU & ĐÓNG CÀI ĐẶT (ESC)", new Vector2(0, -412), new Vector2(360, 56), Accent, Ink, () => ToggleSettingsFromBoard(), 22);
+        settingsAboutBoard = ButtonAt(settingsPanel.transform, "AboutBoardAction", "ABOUT (NHÓM TÁC GIẢ)", new Vector2(380, -412), new Vector2(260, 56), Tile, Mint, () => OpenAbout(), 18);
 
         settingsPanel.SetActive(false);
+    }
+
+    public void OpenAbout()
+    {
+        if (aboutDialog != null)
+        {
+            aboutDialog.SetActive(true);
+            aboutDialog.transform.SetAsLastSibling();
+        }
+    }
+
+    public void CloseAbout()
+    {
+        if (aboutDialog != null) aboutDialog.SetActive(false);
+    }
+
+    public void ToggleAbout()
+    {
+        if (IsAboutOpen) CloseAbout();
+        else OpenAbout();
+    }
+
+    private void BuildAboutDialog(Transform parent)
+    {
+        aboutDialog = Group("AboutDialog", parent);
+        var r = (RectTransform)aboutDialog.transform;
+        r.anchorMin = Vector2.zero;
+        r.anchorMax = Vector2.one;
+        r.offsetMin = Vector2.zero;
+        r.offsetMax = Vector2.zero;
+
+        // Dark dim backdrop (clicking backdrop closes about)
+        var dimBtn = ButtonAt(aboutDialog.transform, "BackdropDim", "", new Vector2(-1500, 1500), new Vector2(3000, 3000), new Color(0.015f, 0.025f, 0.04f, 0.82f), Color.clear, () => CloseAbout(), 10);
+        var dimRect = (RectTransform)dimBtn.transform;
+        dimRect.anchorMin = new Vector2(0.5f, 0.5f);
+        dimRect.anchorMax = new Vector2(0.5f, 0.5f);
+        dimRect.pivot = new Vector2(0.5f, 0.5f);
+        dimRect.anchoredPosition = Vector2.zero;
+
+        // Modal Window (Centered, 660x420)
+        var modal = SlicedImage(aboutDialog.transform, "ModalWindow", spriteWindow != null ? spriteWindow : spritePanel, Color.white, new Vector2(-330, 210), new Vector2(660, 420), new Vector2(0.5f, 0.5f), 0.5f);
+        
+        // Inset
+        SlicedImage(modal.transform, "Inset", spritePanelInset, new Color(0.12f, 0.1f, 0.08f, 0.65f), new Vector2(8, -8), new Vector2(644, 404), TopLeft, 0.5f);
+
+        // Header Title
+        IconImage(modal.transform, "Icon", spriteStar, Accent, new Vector2(24, -20), new Vector2(28, 28), TopLeft);
+        Label(modal.transform, "Title", "THÔNG TIN DỰ ÁN  •  ABOUT", new Vector2(62, -18), new Vector2(570, 32), 22, Accent, true);
+        Label(modal.transform, "Subtitle", "GUNQUEST 3D  •  ĐỒ ÁN PHÁT TRIỂN GAME", new Vector2(62, -48), new Vector2(570, 22), 15, Mint);
+        Image(modal.transform, "Divider", Line, new Vector2(20, -74), new Vector2(620, 1), TopLeft);
+
+        // Caption
+        Label(modal.transform, "TeamCaption", "NHÓM SINH VIÊN THỰC HIỆN:", new Vector2(24, -86), new Vector2(610, 24), 15, Muted, true);
+
+        // 3 Member Cards
+        string[,] members = new string[,]
+        {
+            { "2312802", "Phan Khánh Vương", "Trưởng nhóm • Gameplay & Hệ thống" },
+            { "2312585", "Phùng Nguyễn Hoài Bo", "Thành viên • Môi trường & Vật phẩm" },
+            { "2312590", "Nguyễn Ngọc Trường Dân", "Thành viên • Enemy AI & Giao diện" }
+        };
+
+        float startY = -114f;
+        float cardH = 54f;
+        float cardGap = 10f;
+
+        for (int i = 0; i < 3; i++)
+        {
+            float y = startY - i * (cardH + cardGap);
+            var card = SlicedImage(modal.transform, "Member" + (i + 1), spritePanelInset, new Color(0.18f, 0.15f, 0.12f, 0.9f), new Vector2(24, y), new Vector2(612, cardH), TopLeft, 0.5f);
+            
+            // Student ID badge
+            var badge = SlicedImage(card.transform, "IdBadge", spriteBtnPressed, new Color(0.25f, 0.2f, 0.15f, 1f), new Vector2(8, -8), new Vector2(130, 38), TopLeft, 0.5f);
+            var idText = Label(badge.transform, "IdText", members[i, 0], Vector2.zero, new Vector2(130, 38), 16, Accent, true);
+            idText.alignment = TextAlignmentOptions.Center;
+
+            // Student Name
+            Label(card.transform, "NameText", members[i, 1], new Vector2(150, -8), new Vector2(450, 24), 18, White, true);
+            
+            // Role
+            Label(card.transform, "RoleText", members[i, 2], new Vector2(150, -30), new Vector2(450, 20), 13, Mint);
+        }
+
+        // University note
+        var schoolText = Label(modal.transform, "SchoolNote", "Trường ĐH Khoa học Tự nhiên, ĐHQG-HCM", new Vector2(24, -310), new Vector2(612, 22), 14, Muted);
+        schoolText.alignment = TextAlignmentOptions.Center;
+
+        // Close Button
+        ButtonAt(modal.transform, "CloseBtn", "ĐÓNG (ESC)", new Vector2(220, -348), new Vector2(220, 48), Accent, Ink, () => CloseAbout(), 20);
+
+        aboutDialog.SetActive(false);
     }
 
     private Slider CreatePixelSlider(Transform parent, string name, float min, float max, float initial, Vector2 position, Vector2 size, UnityEngine.Events.UnityAction<float> onValueChanged)
@@ -452,6 +545,8 @@ public class ContractUI : MonoBehaviour
             settingsBoard.gameObject.SetActive(true);
             settingsQuit.gameObject.SetActive(true);
             settingsClose.gameObject.SetActive(false);
+            if (settingsAboutBoard != null) settingsAboutBoard.gameObject.SetActive(false);
+            if (settingsAboutPause != null) settingsAboutPause.gameObject.SetActive(true);
         }
         else
         {
@@ -461,6 +556,8 @@ public class ContractUI : MonoBehaviour
             settingsBoard.gameObject.SetActive(false);
             settingsQuit.gameObject.SetActive(false);
             settingsClose.gameObject.SetActive(true);
+            if (settingsAboutBoard != null) settingsAboutBoard.gameObject.SetActive(true);
+            if (settingsAboutPause != null) settingsAboutPause.gameObject.SetActive(false);
         }
     }
 
@@ -556,6 +653,31 @@ public class ContractUI : MonoBehaviour
     {
         GameSettings.Instance.ResetDefaults();
         RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
+    }
+
+        private void SelectMap(int index)
+    {
+        selectedMapIndex = index;
+        lastSelectedMap = -1; // force refresh
+        Refresh();
+    }
+
+    public void OnStartButtonClicked()
+    {
+        string curScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        bool isCurrent = (selectedMapIndex == 0 && curScene == "AutumnValley")
+                      || (selectedMapIndex == 1 && curScene == "IceboundPass");
+
+        if (isCurrent)
+        {
+            game.AcceptContract();
+        }
+        else
+        {
+            string targetScene = selectedMapIndex == 0 ? "AutumnValley" : "IceboundPass";
+            Time.timeScale = 1;
+            UnityEngine.SceneManagement.SceneManager.LoadScene(targetScene);
+        }
     }
 
     private void SetShopTab(bool supplies)
@@ -902,9 +1024,8 @@ public class ContractUI : MonoBehaviour
         if (index == 0) return spriteIconPistol;
         if (index == 1) return spriteIconRifle;
         if (index == 2) return spriteIconBat;
-        if (index == 3) return spriteIconShovel;
-        if (index == 4) return spriteIconPotion;
-        if (index == 5) return spriteIconBomb;
+        if (index == 3) return spriteIconPotion;
+        if (index == 4) return spriteIconBomb;
         return spriteSword != null ? spriteSword : whiteSprite;
     }
 
@@ -919,7 +1040,8 @@ public class ContractUI : MonoBehaviour
 
         if (settingsPanel != null) settingsPanel.SetActive(showSettings);
         if (boardBody != null) boardBody.SetActive(!showSettings);
-        if (settingsBoardBtn != null) settingsBoardBtn.gameObject.SetActive(isBoard);
+        if (settingsBoardBtn != null) settingsBoardBtn.gameObject.SetActive(!showSettings);
+        if (aboutBoardBtn != null) aboutBoardBtn.gameObject.SetActive(!showSettings);
 
         wallet.text = p.credits.ToString("N0") + " <size=18>xu</size>";
         completed.text = "ĐÃ HOÀN THÀNH  " + p.completedContracts;
@@ -939,33 +1061,114 @@ public class ContractUI : MonoBehaviour
             lastMagazine == p.magazineLevel && lastCompleted == p.completedContracts &&
             lastPotionCount == curPotion && lastGrenadeCount == curGrenade &&
             lastPistolAmmo == curPistol && lastRifleAmmo == curRifle &&
-            lastTabSupplies == showingSuppliesTab) return;
+            lastTabSupplies == showingSuppliesTab && lastSelectedMap == selectedMapIndex) return;
 
         menuPhase = state; lastCredits = p.credits; lastDamage = p.damageLevel;
         lastMagazine = p.magazineLevel; lastCompleted = p.completedContracts;
         lastPotionCount = curPotion; lastGrenadeCount = curGrenade;
         lastPistolAmmo = curPistol; lastRifleAmmo = curRifle;
-        lastTabSupplies = showingSuppliesTab;
+        lastTabSupplies = showingSuppliesTab; lastSelectedMap = selectedMapIndex;
 
         start.gameObject.SetActive(isBoard);
         resume.gameObject.SetActive(isPaused);
         retry.gameObject.SetActive(!isBoard && !isPaused);
-        pausedRetry.gameObject.SetActive(isPaused);
+
+        var retryTxt = retry.GetComponentInChildren<TMP_Text>();
+        if (retryTxt != null)
+        {
+            if (won)
+            {
+                string nextName = !string.IsNullOrEmpty(game.NextSceneName) ? "ĐÈO BĂNG (ICEBOUND PASS)" : "MÀN TIẾP THEO";
+                int secs = Mathf.CeilToInt(game.TransitionRemainingTime);
+                if (secs > 0)
+                    retryTxt.text = "QUA MÀN: " + nextName + " (" + secs + "s)   →  [ENTER]";
+                else
+                    retryTxt.text = "QUA MÀN: " + nextName + "   →  [ENTER]";
+            }
+            else
+            {
+                retryTxt.text = "CHƠI LẠI HỢP ĐỒNG NÀY   →  [ENTER]";
+            }
+        }
+        pausedRetry.gameObject.SetActive(isPaused); if (board != null) ((RectTransform)board.transform).anchoredPosition = new Vector2(24, isPaused ? -255 : -195);
         shop.SetActive(isBoard);
         summary.SetActive(!isBoard);
 
-        eyebrow.text = isBoard ? (game.IsContractStarted ? "ĐANG SĂN QUÁI  /  CỬA HÀNG TIẾP TẾ" : "HỢP ĐỒNG ĐANG MỞ  /  SĂN QUÁI") : isPaused ? "LƯỢT SĂN ĐANG TẠM DỪNG" : won ? "NHIỆM VỤ THÀNH CÔNG" : "NHIỆM VỤ KHÔNG HOÀN THÀNH";
-        missionTitle.text = isBoard ? (game.IsContractStarted ? "TIẾP TẾ & TRANG BỊ" : game.MissionTitle) : isPaused ? "TẠM DỪNG" : won ? "HỢP ĐỒNG HOÀN TẤT" : "LƯỢT SĂN KẾT THÚC";
-        briefing.text = isBoard ? (game.IsContractStarted ? "Bạn đang tạm ghé cửa hàng tiếp tế. Mua thêm đạn, bình máu, lựu đạn hoặc nâng cấp sát thương rồi nhấn [ENTER] để tiếp tục chiến đấu." : game.MissionBriefing) : isPaused ?
-            game.MissionTitle + "\nTiếp tục khi bạn đã sẵn sàng. Lượt săn và quá trình nạp đạn đang tạm dừng." :
-            won ? "Mục tiêu đã bị hạ và bạn đã rút lui an toàn. Dùng tiền thưởng để chuẩn bị cho lượt săn tiếp theo." :
-            (string.IsNullOrEmpty(game.FailureReason) ? "Bạn đã bị hạ. Chuẩn bị lại trang bị và thử sức một lần nữa." : game.FailureReason);
-        missionStripe.color = won ? Mint : (!isBoard && !isPaused ? Danger : Accent);
-        rewardCaption.text = won ? "PHẦN THƯỞNG ĐÃ LƯU" : !isBoard && !isPaused ? "PHẦN THƯỞNG NHẬN ĐƯỢC" : "THƯỞNG HOÀN THÀNH";
-        rewardValue.text = (!isBoard && !isPaused && !won ? "0" : game.Reward.ToString()) + " <size=22>xu</size>";
-        rewardHint.text = won ? "Rút lui thành công.\nSẵn sàng cho hợp đồng mới." : !isBoard && !isPaused ?
-            "Chết sẽ không nhận thưởng.\nBạn có thể thử lại hợp đồng." : "Hạ mục tiêu. Rút lui an toàn.\nThưởng chỉ được nhận khi trở về.";
-        sideTitle.text = isBoard ? (showingSuppliesTab ? "CỬA HÀNG VẬT PHẨM" : "NÂNG CẤP TRANG BỊ") : "THÔNG TIN LƯỢT SĂN";
+        if (map1Btn != null) map1Btn.gameObject.SetActive(isBoard);
+        if (map2Btn != null) map2Btn.gameObject.SetActive(isBoard);
+
+        if (isBoard)
+        {
+            eyebrow.text = game.IsContractStarted ? "ĐANG SĂN QUÁI  /  CỬA HÀNG TIẾP TẾ" : "CHỌN MAP  •  BẢN ĐỒ CHIẾN DỊCH";
+
+            bool isMap1 = selectedMapIndex == 0;
+            string curScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            bool isCurrent = (isMap1 && curScene == "AutumnValley") || (!isMap1 && curScene == "IceboundPass");
+
+            if (map1Btn != null)
+            {
+                map1Btn.image.color = isMap1 ? Accent : Tile;
+                if (map1BtnText != null)
+                {
+                    map1BtnText.color = isMap1 ? Ink : White;
+                    map1BtnText.text = isMap1 ? "<b>MAP 1: THUNG LŨNG LÁ ĐỎ</b>" : "MAP 1: THUNG LŨNG LÁ ĐỎ";
+                }
+            }
+            if (map2Btn != null)
+            {
+                map2Btn.image.color = !isMap1 ? Accent : Tile;
+                if (map2BtnText != null)
+                {
+                    map2BtnText.color = !isMap1 ? Ink : White;
+                    map2BtnText.text = !isMap1 ? "<b>MAP 2: ĐÈO BĂNG GIÁ</b>" : "MAP 2: ĐÈO BĂNG GIÁ";
+                }
+            }
+
+            if (isMap1)
+            {
+                missionTitle.text = "THUNG LŨNG LÁ ĐỎ" + (isCurrent ? "  <size=18><color=#2A9D8F>(BẢN ĐỒ HIỆN TẠI)</color></size>" : "");
+                briefing.text = "Theo đường đất qua cầu phía tây hoặc đi vòng qua cầu phía đông.\nHạ quái laser tại trại cờ đỏ, rồi quay về vòng xanh ở trại xuất phát.";
+                rewardValue.text = "300 <size=22>xu</size>";
+            }
+            else
+            {
+                missionTitle.text = "ĐÈO BĂNG GIÁ (ICEBOUND)" + (isCurrent ? "  <size=18><color=#2A9D8F>(BẢN ĐỒ HIỆN TẠI)</color></size>" : "");
+                briefing.text = "Băng qua hồ đóng băng hoặc theo đường tuyết ven núi phía đông.\nHạ quái vật chỉ huy tại tiền đồn băng, rồi quay về vòng xanh ở làng xuất phát.";
+                rewardValue.text = "350 <size=22>xu</size>";
+            }
+
+            missionStripe.color = Accent;
+            rewardCaption.text = "THƯỞNG HOÀN THÀNH";
+            rewardHint.text = isCurrent ? "Hạ mục tiêu. Rút lui an toàn.\nThưởng chỉ được nhận khi trở về." : "Nhấn [ENTER] hoặc bấm nút\ndưới để nạp bản đồ này.";
+
+            var startTxt = start.GetComponentInChildren<TMP_Text>();
+            if (startTxt != null)
+            {
+                if (isCurrent)
+                {
+                    startTxt.text = game.IsContractStarted ? "TIẾP TỤC TRẬN ĐẤU   →  [ENTER]" : "VÀO TRẬN: " + (isMap1 ? "THUNG LŨNG LÁ ĐỎ" : "ĐÈO BĂNG GIÁ") + "   →  [ENTER]";
+                }
+                else
+                {
+                    startTxt.text = "CHUYỂN SANG MAP: " + (isMap1 ? "THUNG LŨNG LÁ ĐỎ" : "ĐÈO BĂNG GIÁ") + "   →  [ENTER]";
+                }
+            }
+        }
+        else
+        {
+            eyebrow.text = isPaused ? "LƯỢT SĂN ĐANG TẠM DỪNG" : won ? "NHIỆM VỤ THÀNH CÔNG" : "NHIỆM VỤ KHÔNG HOÀN THÀNH";
+            missionTitle.text = isPaused ? "TẠM DỪNG" : won ? "HỢP ĐỒNG HOÀN TẤT" : "LƯỢT SĂN KẾT THÚC";
+            briefing.text = isPaused ?
+                game.MissionTitle + "\nTiếp tục khi bạn đã sẵn sàng. Lượt săn và quá trình nạp đạn đang tạm dừng." :
+                won ? ("Mục tiêu đã bị tiêu diệt và bạn đã rút lui an toàn!\nĐang chuẩn bị tiến vào " + (!string.IsNullOrEmpty(game.NextSceneName) ? "ĐÈO BĂNG GIÁ (Icebound Pass)" : "màn tiếp theo") + ".\nNhấn [ENTER] hoặc bấm nút bên dưới để chuyển màn ngay.") :
+                (string.IsNullOrEmpty(game.FailureReason) ? "Bạn đã bị hạ. Chuẩn bị lại trang bị và thử sức một lần nữa." : game.FailureReason);
+            missionStripe.color = won ? Mint : (!isBoard && !isPaused ? Danger : Accent);
+            rewardCaption.text = won ? "PHẦN THƯỞNG ĐÃ LƯU" : !isBoard && !isPaused ? "PHẦN THƯỞNG NHẬN ĐƯỢC" : "THƯỞNG HOÀN THÀNH";
+            rewardValue.text = (!isBoard && !isPaused && !won ? "0" : game.Reward.ToString()) + " <size=22>xu</size>";
+            rewardHint.text = won ? "Rút lui thành công.\nTiến vào Icebound Pass." : !isBoard && !isPaused ?
+                "Chết sẽ không nhận thưởng.\nBạn có thể thử lại hợp đồng." : "Hạ mục tiêu. Rút lui an toàn.\nThưởng chỉ được nhận khi trở về.";
+        }
+        if (sideTitle != null) sideTitle.text = isBoard ? (showingSuppliesTab ? "CỬA HÀNG VẬT PHẨM" : "NÂNG CẤP TRANG BỊ") : "THÔNG TIN LƯỢT SĂN";
         currentGear.text = "ĐANG DÙNG  +" + p.damageLevel * 10 + "% sát thương\nBăng đạn Lv." + p.magazineLevel;
         summaryMission.text = game.MissionTitle;
         summaryGear.text = "Sát thương +" + p.damageLevel * 10 + "%   •   Băng đạn Lv." + p.magazineLevel;
@@ -973,11 +1176,7 @@ public class ContractUI : MonoBehaviour
         Offer(false, magazineUpgrade, magazineValue, magazinePrice);
         RefreshShopSupplies();
 
-        var startTxt = start.GetComponentInChildren<TMP_Text>();
-        if (startTxt != null)
-        {
-            startTxt.text = game.IsContractStarted ? "TIẾP TỤC TRẬN ĐẤU   →  [ENTER]" : "NHẬN HỢP ĐỒNG   →  [ENTER]";
-        }
+// startTxt handled in isBoard block above
     }
 
     private void RefreshShopSupplies()

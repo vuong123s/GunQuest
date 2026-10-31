@@ -18,6 +18,9 @@ public class ContractGame : MonoBehaviour
     [SerializeField] private string missionTitle = "DỌN SẠCH KHU TRẠI";
     [SerializeField, TextArea(2, 4)] private string missionBriefing = "Săn quái laser, sau đó quay về vòng xanh ở điểm xuất phát.";
     [SerializeField, TextArea(2, 4)] private string missionObjective = "Tiêu diệt quái laser trong khu trại.";
+    [Header("Progression")]
+    [SerializeField] private string nextSceneName = "IceboundPass";
+    [SerializeField] private float autoTransitionDelay = 5f;
     public Phase State { get; private set; }
     public ContractProgress Progress { get; private set; }
     public bool IsPlaying => State == Phase.Hunting || State == Phase.Extracting;
@@ -28,6 +31,8 @@ public class ContractGame : MonoBehaviour
     public string MissionTitle => missionTitle;
     public string MissionBriefing => missionBriefing;
     public string MissionObjective => missionObjective;
+    public string NextSceneName => nextSceneName;
+    public float TransitionRemainingTime => Mathf.Max(0f, transitionTimer);
     public event System.Action<int> CreditsAdded;
 
     public void AddCredits(int amount)
@@ -41,6 +46,8 @@ public class ContractGame : MonoBehaviour
     private PlayerHealth player;
     private InputManager input;
     private ContractUI ui;
+    private Coroutine transitionRoutine;
+    private float transitionTimer;
 
     private void Awake()
     {
@@ -74,13 +81,14 @@ public class ContractGame : MonoBehaviour
         {
             if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
-                if (IsPlaying) Pause();
+                if (ui != null && ui.IsAboutOpen) ui.CloseAbout();
+                else if (IsPlaying) Pause();
                 else if (State == Phase.Paused) Resume();
-                else if (State == Phase.Board && ui != null) ui.ToggleSettingsFromBoard();
+                else if ((State == Phase.Board || State == Phase.Lost || State == Phase.Won) && ui != null) ui.ToggleSettingsFromBoard();
             }
 
             // Nhấn phím Enter (hoặc NumpadEnter) để mở / quay lại Bảng Hợp Đồng (Board) bất kỳ lúc nào
-            if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame)
+            if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame)
             {
                 if (IsPlaying)
                 {
@@ -88,7 +96,16 @@ public class ContractGame : MonoBehaviour
                 }
                 else if (State == Phase.Board)
                 {
-                    AcceptContract();
+                    if (ui != null) ui.OnStartButtonClicked();
+                    else AcceptContract();
+                }
+                else if (State == Phase.Won)
+                {
+                    NextStage();
+                }
+                else if (State == Phase.Lost)
+                {
+                    Retry();
                 }
             }
         }
@@ -139,6 +156,36 @@ public class ContractGame : MonoBehaviour
         Progress.completedContracts++;
         Progress.Save();
         SetPhase(Phase.Won);
+        if (!string.IsNullOrEmpty(nextSceneName) && autoTransitionDelay > 0)
+        {
+            if (transitionRoutine != null) StopCoroutine(transitionRoutine);
+            transitionRoutine = StartCoroutine(AutoTransitionRoutine());
+        }
+    }
+
+    private System.Collections.IEnumerator AutoTransitionRoutine()
+    {
+        transitionTimer = autoTransitionDelay;
+        while (transitionTimer > 0f)
+        {
+            yield return null;
+            if (State != Phase.Won) yield break;
+            transitionTimer -= Time.unscaledDeltaTime;
+        }
+        NextStage();
+    }
+
+    public void NextStage()
+    {
+        if (transitionRoutine != null) { StopCoroutine(transitionRoutine); transitionRoutine = null; }
+        if (string.IsNullOrEmpty(nextSceneName))
+        {
+            ReturnToBoard();
+            return;
+        }
+        acceptOnLoad = false;
+        Time.timeScale = 1;
+        SceneManager.LoadScene(nextSceneName);
     }
 
     public void Pause() { if (!IsPlaying) return; resumePhase = State; SetPhase(Phase.Paused); }
@@ -206,6 +253,7 @@ public class ContractGame : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (transitionRoutine != null) { StopCoroutine(transitionRoutine); transitionRoutine = null; }
         if (contractTarget != null) contractTarget.Died -= OnTargetDied;
         if (Instance != this) return;
         Instance = null;

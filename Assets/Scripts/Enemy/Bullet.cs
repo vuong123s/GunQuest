@@ -21,6 +21,19 @@ public class Bullet : MonoBehaviour
     private void Start() => Destroy(gameObject, lifeTime);
     private void Update() => transform.position += transform.forward * speed * Time.deltaTime;
 
+    private static GameObject hitVfxPrefab;
+
+    private void SpawnHitVfx(Vector3 pos)
+    {
+        if (hitVfxPrefab == null) hitVfxPrefab = Resources.Load<GameObject>("VFX/vfx_Impact_01");
+        if (hitVfxPrefab != null)
+        {
+            GameObject fx = Instantiate(hitVfxPrefab, pos, Quaternion.identity);
+            fx.transform.localScale = Vector3.one * 0.7f;
+            Destroy(fx, 1.5f);
+        }
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         if (owner != null && (other.transform == owner || other.transform.IsChildOf(owner))) return;
@@ -29,15 +42,18 @@ public class Bullet : MonoBehaviour
         if (!firedByPlayer && other.TryGetComponent<PlayerHealth>(out PlayerHealth player))
         {
             player.TakeDamage(damage);
+            SpawnHitVfx(transform.position);
             Destroy(gameObject);
         }
         else if (firedByPlayer && other.GetComponentInParent<EnemyHealth>() is EnemyHealth enemy)
         {
             enemy.TakeDamage(damage, transform.position);
+            SpawnHitVfx(transform.position);
             Destroy(gameObject);
         }
         else if (!other.isTrigger)
         {
+            SpawnHitVfx(transform.position);
             Destroy(gameObject);
         }
     }

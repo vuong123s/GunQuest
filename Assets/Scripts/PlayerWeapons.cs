@@ -76,7 +76,7 @@ public class PlayerWeapons : MonoBehaviour
 
     public bool IsReloading { get; private set; }
     public bool IsMeleeAttacking => melee != null && melee.IsAttacking;
-    public MeleeAttackTiming CurrentMeleeTiming => MeleeAttackTiming.ForWeapon(IsShovel(Current));
+    public MeleeAttackTiming CurrentMeleeTiming => MeleeAttackTiming.Bat;
     public event Action Changed;
     public event Action Attacked;
     public event Action QuickMeleeStarted;
@@ -156,39 +156,63 @@ public class PlayerWeapons : MonoBehaviour
         Changed?.Invoke();
     }
 
-    public bool CanBuyPotion => slots != null && slots.Length > 4 && slots[4].count < ContractProgress.MaxPotions;
-    public bool CanBuyGrenade => slots != null && slots.Length > 5 && slots[5].count < ContractProgress.MaxGrenades;
+    public int PotionSlotIndex
+    {
+        get
+        {
+            if (slots == null) return -1;
+            for (int i = 0; i < slots.Length; i++)
+                if (slots[i] != null && slots[i].kind == SlotKind.Consumable) return i;
+            return -1;
+        }
+    }
+
+    public int GrenadeSlotIndex
+    {
+        get
+        {
+            if (slots == null) return -1;
+            for (int i = 0; i < slots.Length; i++)
+                if (slots[i] != null && slots[i].kind == SlotKind.Throwable) return i;
+            return -1;
+        }
+    }
+
+    public bool CanBuyPotion => PotionSlotIndex >= 0 && slots[PotionSlotIndex].count < ContractProgress.MaxPotions;
+    public bool CanBuyGrenade => GrenadeSlotIndex >= 0 && slots[GrenadeSlotIndex].count < ContractProgress.MaxGrenades;
     public bool CanBuyPistolAmmo => reserves != null && reserves.Length > 0 && reserves[0] < ContractProgress.MaxPistolReserve;
     public bool CanBuyRifleAmmo => reserves != null && reserves.Length > 1 && reserves[1] < ContractProgress.MaxRifleReserve;
 
-    public int PotionCount => (slots != null && slots.Length > 4) ? slots[4].count : (progress != null ? progress.healthPotionCount : 0);
+    public int PotionCount => PotionSlotIndex >= 0 ? slots[PotionSlotIndex].count : (progress != null ? progress.healthPotionCount : 0);
     public int PotionMaxCount => ContractProgress.MaxPotions;
-    public int GrenadeCount => (slots != null && slots.Length > 5) ? slots[5].count : (progress != null ? progress.grenadeCount : 0);
+    public int GrenadeCount => GrenadeSlotIndex >= 0 ? slots[GrenadeSlotIndex].count : (progress != null ? progress.grenadeCount : 0);
     public int GrenadeMaxCount => ContractProgress.MaxGrenades;
     public int PistolReserve => (reserves != null && reserves.Length > 0) ? reserves[0] : (progress != null ? progress.pistolAmmoReserve : 0);
     public int RifleReserve => (reserves != null && reserves.Length > 1) ? reserves[1] : (progress != null ? progress.rifleAmmoReserve : 0);
 
     public bool AddPotion(int amount = 1)
     {
-        if (slots == null || slots.Length <= 4) return false;
+        int idx = PotionSlotIndex;
+        if (idx < 0) return false;
         int max = ContractProgress.MaxPotions;
-        if (slots[4].count >= max) return false;
-        slots[4].count = Mathf.Min(max, slots[4].count + amount);
-        if (progress != null) progress.healthPotionCount = slots[4].count;
+        if (slots[idx].count >= max) return false;
+        slots[idx].count = Mathf.Min(max, slots[idx].count + amount);
+        if (progress != null) progress.healthPotionCount = slots[idx].count;
         Changed?.Invoke();
-        StatusMessage?.Invoke("+1 Bình Máu (" + slots[4].count + "/" + max + ")", new Color(1f, 0.35f, 0.45f));
+        StatusMessage?.Invoke("+1 Bình Máu (" + slots[idx].count + "/" + max + ")", new Color(1f, 0.35f, 0.45f));
         return true;
     }
 
     public bool AddGrenade(int amount = 1)
     {
-        if (slots == null || slots.Length <= 5) return false;
+        int idx = GrenadeSlotIndex;
+        if (idx < 0) return false;
         int max = ContractProgress.MaxGrenades;
-        if (slots[5].count >= max) return false;
-        slots[5].count = Mathf.Min(max, slots[5].count + amount);
-        if (progress != null) progress.grenadeCount = slots[5].count;
+        if (slots[idx].count >= max) return false;
+        slots[idx].count = Mathf.Min(max, slots[idx].count + amount);
+        if (progress != null) progress.grenadeCount = slots[idx].count;
         Changed?.Invoke();
-        StatusMessage?.Invoke("+1 Lựu Đạn (" + slots[5].count + "/" + max + ")", new Color(1f, 0.8f, 0.25f));
+        StatusMessage?.Invoke("+1 Lựu Đạn (" + slots[idx].count + "/" + max + ")", new Color(1f, 0.8f, 0.25f));
         return true;
     }
 
