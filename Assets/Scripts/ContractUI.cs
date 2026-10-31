@@ -158,7 +158,7 @@ public class ContractUI : MonoBehaviour
 
         // Header
         Label(shell, "Brand", "GUNQUEST", new Vector2(0, -2), new Vector2(420, 56), 44, White, true);
-        Label(shell, "BrandCaption", "TRẠM HỢP ĐỒNG  /  SẴN SÀNG LÊN ĐƯỜNG", new Vector2(3, -61), new Vector2(460, 28), 16, Mint);
+        Label(shell, "BrandCaption", "TRẠM NHIỆM VỤ  /  SẴN SÀNG LÊN ĐƯỜNG", new Vector2(3, -61), new Vector2(460, 28), 16, Mint);
 
         var funds = SlicedImage(shell, "Funds", spritePanel, Color.white, new Vector2(490, 0), new Vector2(230, 80), TopLeft, 0.5f);
         IconImage(funds.transform, "CoinIcon", spriteCoin, Color.white, new Vector2(14, -26), new Vector2(28, 28), TopLeft);
@@ -194,7 +194,7 @@ public class ContractUI : MonoBehaviour
         rewardValue = Label(mission.transform, "Reward", "", new Vector2(32, -300), new Vector2(270, 44), 30, Ink, true);
         rewardHint = Label(mission.transform, "RewardHint", "", new Vector2(310, -288), new Vector2(360, 50), 16, new Color(.34f, .39f, .39f));
 
-        start = ButtonAt(boardBody.transform, "AcceptContract", "NHẬN HỢP ĐỒNG   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => OnStartButtonClicked(), 24);
+        start = ButtonAt(boardBody.transform, "AcceptContract", "NHẬN NHIỆM VỤ   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => OnStartButtonClicked(), 24);
         resume = ButtonAt(boardBody.transform, "Resume", "TIẾP TỤC LƯỢT SĂN   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => game.Resume(), 24);
         retry = ButtonAt(boardBody.transform, "Retry", "CHƠI LẠI   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => { if (game.State == ContractGame.Phase.Won) game.NextStage(); else game.Retry(); }, 24);
 
@@ -230,7 +230,7 @@ public class ContractUI : MonoBehaviour
         summaryMission = Label(summary.transform, "SummaryMission", "", new Vector2(24, -50), new Vector2(348, 72), 24, White, true);
         summaryGear = Label(summary.transform, "SummaryGear", "", new Vector2(24, -130), new Vector2(348, 44), 18, Muted);
         pausedRetry = ButtonAt(summary.transform, "RestartPaused", "CHƠI LẠI TỪ ĐẦU", new Vector2(24, -195), new Vector2(348, 48), Tile, White, () => game.Retry(), 18);
-        board = ButtonAt(summary.transform, "ReturnToBoard", "VỀ BẢNG HỢP ĐỒNG", new Vector2(24, -255), new Vector2(348, 48), Tile, White, () => game.ReturnToBoard(), 18);
+        board = ButtonAt(summary.transform, "ReturnToBoard", "VỀ BẢNG NHIỆM VỤ", new Vector2(24, -255), new Vector2(348, 48), Tile, White, () => game.ReturnToBoard(), 18);
 
         // Settings Panel (Shown during Pause or when opened via Settings button)
         BuildSettingsPanel(shell);
@@ -238,7 +238,7 @@ public class ContractUI : MonoBehaviour
 
         Image(shell, "FooterLine", Line, new Vector2(0, -581), new Vector2(1120, 1), TopLeft);
         var help = Label(shell, "Controls",
-            "WASD  Di chuyển     •     Chuột trái  Bắn / Dùng     •     R  Nạp đạn     •     1–5 / Cuộn chuột  Đổi trang bị\nEnter  Mở Bảng Hợp Đồng & Cửa Hàng     •     Esc  Cài đặt & Tạm dừng",
+            "WASD  Di chuyển     •     Chuột trái  Bắn / Dùng     •     R  Nạp đạn     •     1–5 / Cuộn chuột  Đổi trang bị\nEnter  Mở Bảng Nhiệm Vụ & Cửa Hàng     •     Esc  Cài đặt & Tạm dừng",
             new Vector2(0, -597), new Vector2(1120, 43), 16, Muted);
         help.alignment = TextAlignmentOptions.Top;
     }
@@ -321,7 +321,7 @@ public class ContractUI : MonoBehaviour
         // ------------------ BOTTOM ACTION BAR ------------------
         settingsResume = ButtonAt(settingsPanel.transform, "ResumeAction", "TIẾP TỤC (ESC)   ▶", new Vector2(0, -412), new Vector2(260, 56), Accent, Ink, () => game.Resume(), 20);
         settingsRetry = ButtonAt(settingsPanel.transform, "RetryAction", "CHƠI LẠI", new Vector2(275, -412), new Vector2(165, 56), Tile, White, () => game.Retry(), 18);
-        settingsBoard = ButtonAt(settingsPanel.transform, "BoardAction", "VỀ BẢNG HỢP ĐỒNG", new Vector2(455, -412), new Vector2(245, 56), Tile, White, () => game.ReturnToBoard(), 18);
+        settingsBoard = ButtonAt(settingsPanel.transform, "BoardAction", "VỀ BẢNG NHIỆM VỤ", new Vector2(455, -412), new Vector2(245, 56), Tile, White, () => game.ReturnToBoard(), 18);
         settingsAboutPause = ButtonAt(settingsPanel.transform, "AboutPauseAction", "ABOUT", new Vector2(715, -412), new Vector2(165, 56), Tile, Mint, () => OpenAbout(), 18);
         settingsQuit = ButtonAt(settingsPanel.transform, "QuitAction", "THOÁT GAME", new Vector2(895, -412), new Vector2(225, 56), Tile, Danger, () => game.Quit(), 18);
 
@@ -733,7 +733,7 @@ public class ContractUI : MonoBehaviour
         // 1. Objective Panel (Top-Left)
         objectivePanel = SlicedImage(hud.transform, "ObjectivePanel", spritePanel, Color.white, new Vector2(28, -28), new Vector2(490, 136), TopLeft, 0.5f).rectTransform;
         IconImage(objectivePanel, "ObjectiveIcon", spriteStar != null ? spriteStar : spriteInfo, Accent, new Vector2(16, -13), new Vector2(20, 20), TopLeft);
-        Label(objectivePanel, "ObjectiveCaption", "HỢP ĐỒNG", new Vector2(42, -14), new Vector2(410, 22), 15, Mint, true);
+        Label(objectivePanel, "ObjectiveCaption", "NHIỆM VỤ", new Vector2(42, -14), new Vector2(410, 22), 15, Mint, true);
         SlicedImage(objectivePanel, "ObjectivePlate", spritePanelInset, new Color(0.12f, 0.1f, 0.08f, 0.72f), new Vector2(12, -38), new Vector2(466, 86), TopLeft, 0.5f);
         objectiveTitle = Label(objectivePanel, "ObjectiveTitle", "", new Vector2(24, -45), new Vector2(442, 32), 23, White, true);
         objectiveTitle.enableAutoSizing = true; objectiveTitle.fontSizeMin = 18; objectiveTitle.fontSizeMax = 23;
@@ -1087,7 +1087,7 @@ public class ContractUI : MonoBehaviour
             }
             else
             {
-                retryTxt.text = "CHƠI LẠI HỢP ĐỒNG NÀY   →  [ENTER]";
+                retryTxt.text = "CHƠI LẠI NHIỆM VỤ NÀY   →  [ENTER]";
             }
         }
         pausedRetry.gameObject.SetActive(isPaused); if (board != null) ((RectTransform)board.transform).anchoredPosition = new Vector2(24, isPaused ? -255 : -195);
@@ -1157,7 +1157,7 @@ public class ContractUI : MonoBehaviour
         else
         {
             eyebrow.text = isPaused ? "LƯỢT SĂN ĐANG TẠM DỪNG" : won ? "NHIỆM VỤ THÀNH CÔNG" : "NHIỆM VỤ KHÔNG HOÀN THÀNH";
-            missionTitle.text = isPaused ? "TẠM DỪNG" : won ? "HỢP ĐỒNG HOÀN TẤT" : "LƯỢT SĂN KẾT THÚC";
+            missionTitle.text = isPaused ? "TẠM DỪNG" : won ? "NHIỆM VỤ HOÀN TẤT" : "LƯỢT SĂN KẾT THÚC";
             briefing.text = isPaused ?
                 game.MissionTitle + "\nTiếp tục khi bạn đã sẵn sàng. Lượt săn và quá trình nạp đạn đang tạm dừng." :
                 won ? ("Mục tiêu đã bị tiêu diệt và bạn đã rút lui an toàn!\nĐang chuẩn bị tiến vào " + (!string.IsNullOrEmpty(game.NextSceneName) ? "ĐÈO BĂNG GIÁ (Icebound Pass)" : "màn tiếp theo") + ".\nNhấn [ENTER] hoặc bấm nút bên dưới để chuyển màn ngay.") :
@@ -1166,7 +1166,7 @@ public class ContractUI : MonoBehaviour
             rewardCaption.text = won ? "PHẦN THƯỞNG ĐÃ LƯU" : !isBoard && !isPaused ? "PHẦN THƯỞNG NHẬN ĐƯỢC" : "THƯỞNG HOÀN THÀNH";
             rewardValue.text = (!isBoard && !isPaused && !won ? "0" : game.Reward.ToString()) + " <size=22>xu</size>";
             rewardHint.text = won ? "Rút lui thành công.\nTiến vào Icebound Pass." : !isBoard && !isPaused ?
-                "Chết sẽ không nhận thưởng.\nBạn có thể thử lại hợp đồng." : "Hạ mục tiêu. Rút lui an toàn.\nThưởng chỉ được nhận khi trở về.";
+                "Chết sẽ không nhận thưởng.\nBạn có thể thử lại nhiệm vụ." : "Hạ mục tiêu. Rút lui an toàn.\nThưởng chỉ được nhận khi trở về.";
         }
         if (sideTitle != null) sideTitle.text = isBoard ? (showingSuppliesTab ? "CỬA HÀNG VẬT PHẨM" : "NÂNG CẤP TRANG BỊ") : "THÔNG TIN LƯỢT SĂN";
         currentGear.text = "ĐANG DÙNG  +" + p.damageLevel * 10 + "% sát thương\nBăng đạn Lv." + p.magazineLevel;

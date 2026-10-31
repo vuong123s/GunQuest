@@ -87,7 +87,7 @@ public class ContractGame : MonoBehaviour
                 else if ((State == Phase.Board || State == Phase.Lost || State == Phase.Won) && ui != null) ui.ToggleSettingsFromBoard();
             }
 
-            // Nhấn phím Enter (hoặc NumpadEnter) để mở / quay lại Bảng Hợp Đồng (Board) bất kỳ lúc nào
+            // Nhấn phím Enter (hoặc NumpadEnter) để mở / quay lại Bảng Nhiệm Vụ (Board) bất kỳ lúc nào
             if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame)
             {
                 if (IsPlaying)
@@ -110,10 +110,10 @@ public class ContractGame : MonoBehaviour
             }
         }
         if (!IsPlaying) return;
-        if (player == null || player.IsDead) { Fail("Bạn đã bị hạ. Thử lại hợp đồng."); return; }
+        if (player == null || player.IsDead) { Fail("Bạn đã bị hạ. Thử lại nhiệm vụ."); return; }
         if (State == Phase.Hunting && contractTarget == null)
         {
-            Fail("Không tìm thấy mục tiêu hợp đồng."); return;
+            Fail("Không tìm thấy mục tiêu nhiệm vụ."); return;
         }
         if (State == Phase.Extracting && Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
             TryExtract();
@@ -138,7 +138,7 @@ public class ContractGame : MonoBehaviour
         }
         if (player == null || contractTarget == null || extractionPoint == null)
         {
-            Fail("Hợp đồng chưa được cấu hình đầy đủ."); return;
+            Fail("Nhiệm vụ chưa được cấu hình đầy đủ."); return;
         }
         player.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
         SetPhase(Phase.Hunting);
