@@ -387,9 +387,9 @@ public class ContractUI : MonoBehaviour
         // 3 Member Cards
         string[,] members = new string[,]
         {
-            { "2312802", "Phan Khánh Vương", "Trưởng nhóm • Gameplay & Hệ thống" },
-            { "2312585", "Phùng Nguyễn Hoài Bo", "Thành viên • Môi trường & Vật phẩm" },
-            { "2312590", "Nguyễn Ngọc Trường Dân", "Thành viên • Enemy AI & Giao diện" }
+            { "2312802", "Phan Khánh Vương" },
+            { "2312585", "Phùng Nguyễn Hoài Bo" },
+            { "2312590", "Nguyễn Ngọc Trường Dân" }
         };
 
         float startY = -114f;
@@ -407,15 +407,9 @@ public class ContractUI : MonoBehaviour
             idText.alignment = TextAlignmentOptions.Center;
 
             // Student Name
-            Label(card.transform, "NameText", members[i, 1], new Vector2(150, -8), new Vector2(450, 24), 18, White, true);
-            
-            // Role
-            Label(card.transform, "RoleText", members[i, 2], new Vector2(150, -30), new Vector2(450, 20), 13, Mint);
+            var nameText = Label(card.transform, "NameText", members[i, 1], new Vector2(150, -8), new Vector2(450, 38), 18, White, true);
+            nameText.alignment = TextAlignmentOptions.MidlineLeft;
         }
-
-        // University note
-        var schoolText = Label(modal.transform, "SchoolNote", "Trường ĐH Khoa học Tự nhiên, ĐHQG-HCM", new Vector2(24, -310), new Vector2(612, 22), 14, Muted);
-        schoolText.alignment = TextAlignmentOptions.Center;
 
         // Close Button
         ButtonAt(modal.transform, "CloseBtn", "ĐÓNG (ESC)", new Vector2(220, -348), new Vector2(220, 48), Accent, Ink, () => CloseAbout(), 20);

@@ -88,7 +88,9 @@ public class ContractGame : MonoBehaviour
             }
 
             // Nhấn phím Enter (hoặc NumpadEnter) để mở / quay lại Bảng Nhiệm Vụ (Board) bất kỳ lúc nào
-            if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame)
+            // Space chỉ xác nhận trên bảng; trong trận Space là phím nhảy
+            bool enterPressed = Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame;
+            if (enterPressed || (!IsPlaying && Keyboard.current.spaceKey.wasPressedThisFrame))
             {
                 if (IsPlaying)
                 {
