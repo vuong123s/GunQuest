@@ -134,9 +134,6 @@ PrefabInstance:
       addedObject: {fileID: 5975747983943617158}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2939c4ec593728d4e9c1b8e34b55c7d4, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6317558787760553127}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2939c4ec593728d4e9c1b8e34b55c7d4, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 4803195185223397691}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2939c4ec593728d4e9c1b8e34b55c7d4, type: 3}
       insertIndex: -1
@@ -269,22 +266,6 @@ MonoBehaviour:
   overlay: {fileID: 0}
   duration: 1
   fadeSpeed: 1.5
---- !u!114 &6317558787760553127
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6696826285615493584}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b602061f4edad3f44903a6b6b4beb499, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerInteract
-  distance: 3
-  mask:
-    serializedVersion: 2
-    m_Bits: 4294967295
 --- !u!114 &4803195185223397691
 MonoBehaviour:
   m_ObjectHideFlags: 0

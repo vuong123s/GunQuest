@@ -61,8 +61,6 @@ public class EnemyAI : MonoBehaviour
     private static readonly int Hit = Animator.StringToHash("Hit");
     private static readonly int Dizzy = Animator.StringToHash("Dizzy");
     private static readonly int Die = Animator.StringToHash("Die");
-    private static readonly int Taunt = Animator.StringToHash("Taunt");
-    private static readonly int Victory = Animator.StringToHash("Victory");
 
     private readonly HashSet<int> animatorParameters = new HashSet<int>();
     private readonly RaycastHit[] laserHits = new RaycastHit[16];
@@ -70,70 +68,15 @@ public class EnemyAI : MonoBehaviour
     private NavMeshAgent agent;
     private Animator animator;
     private MonsterEffects effects;
-    private float nextAttackTime;
-    private float pendingShotTime;
-    private float nextStrafeTime;
-    private float nextPlayerSearchTime;
-    private float alertLockUntil;
-    private float laserEndTime;
-    private float nextLaserDamageTime;
-    private int strafeDirection = 1;
-    private int hitCount;
-    private bool alert;
-    private bool shotPending;
-    private bool laserActive;
-    private bool dead;
+    private float nextAttackTime, pendingShotTime, nextStrafeTime, nextPlayerSearchTime, alertLockUntil, laserEndTime, nextLaserDamageTime;
+    private int strafeDirection = 1, hitCount;
+    private bool alert, shotPending, laserActive, dead;
     private Vector3 eyeDirection;
     private string currentLegacyState;
 
-    public EnemyAttackType AttackType { get => attackType; set => attackType = value; }
-    public float MeleeDamage { get => meleeDamage; set => meleeDamage = value; }
-    public float MeleeRange { get => meleeRange; set => meleeRange = value; }
-    public float MeleeCooldown { get => meleeCooldown; set => meleeCooldown = value; }
-    public float MoveSpeed
-    {
-        get => moveSpeed;
-        set
-        {
-            moveSpeed = value;
-            if (agent != null) agent.speed = value;
-        }
-    }
-
-    public void ConfigureMelee(float damage, float range, float speed, float cooldown = 1.1f, float windup = 0.22f)
-    {
-        attackType = EnemyAttackType.Melee;
-        meleeDamage = damage;
-        meleeRange = range;
-        moveSpeed = speed;
-        meleeCooldown = cooldown;
-        meleeWindup = windup;
-        if (agent != null)
-        {
-            agent.speed = speed;
-            agent.stoppingDistance = Mathf.Max(0.8f, range * 0.6f);
-        }
-    }
-
-    public void ConfigureRanged(float damage, float preferredDist, float shootDist, float speed, float rate = 1.3f)
-    {
-        attackType = EnemyAttackType.Ranged;
-        projectileDamage = damage;
-        preferredRange = preferredDist;
-        shootRange = shootDist;
-        moveSpeed = speed;
-        fireRate = rate;
-        if (agent != null)
-        {
-            agent.speed = speed;
-            agent.stoppingDistance = 0f;
-        }
-    }
-
     private void Awake()
     {
-        agent = GetComponent<NavMeshAgent>();
-        if (agent == null) agent = gameObject.AddComponent<NavMeshAgent>();
+        agent = GetComponent<NavMeshAgent>() ?? gameObject.AddComponent<NavMeshAgent>();
         agent.speed = moveSpeed;
         agent.stoppingDistance = attackType == EnemyAttackType.Melee ? Mathf.Max(0.8f, meleeRange * 0.6f) : 0f;
         agent.updateRotation = false;
@@ -143,11 +86,12 @@ public class EnemyAI : MonoBehaviour
 
         animator = GetComponentInChildren<Animator>();
         effects = GetComponent<MonsterEffects>();
-        if (eye == null) eye = FindChild("EyeBallCTRL");
-        if (eye == null) eye = FindChild("EyeCTRL");
+        if (eye == null) eye = FindChild("EyeBallCTRL") ?? FindChild("EyeCTRL");
         if (gunBarrel == null) gunBarrel = FindChild("MonsterMuzzle");
         eyeDirection = transform.forward;
-        CacheAnimatorParameters();
+        if (animator != null)
+            foreach (AnimatorControllerParameter parameter in animator.parameters)
+                animatorParameters.Add(parameter.nameHash);
 
         if (GetComponentInChildren<Collider>() == null)
         {
@@ -172,11 +116,7 @@ public class EnemyAI : MonoBehaviour
         }
 
         float distance = Vector3.Distance(transform.position, player.position);
-        if (distance > detectionRange)
-        {
-            LeaveCombat();
-            return;
-        }
+        if (distance > detectionRange) { LeaveCombat(); return; }
 
         EnterCombat();
         FacePlayer();
@@ -191,14 +131,7 @@ public class EnemyAI : MonoBehaviour
         }
 
         FirePendingShot();
-        if (laserActive)
-        {
-            StopMoving();
-            SetMovement(Vector2.zero, 0f);
-            return;
-        }
-
-        if (Time.time < alertLockUntil)
+        if (laserActive || Time.time < alertLockUntil)
         {
             StopMoving();
             SetMovement(Vector2.zero, 0f);
@@ -216,9 +149,7 @@ public class EnemyAI : MonoBehaviour
         EnterCombat();
         FacePlayer();
         hitCount++;
-
-        bool played = hitCount % 4 == 0 ? SetTrigger(Dizzy) : SetTrigger(Hit);
-        if (!played) PlayLegacy(hitState);
+        if (!(hitCount % 4 == 0 ? SetTrigger(Dizzy) : SetTrigger(Hit))) PlayLegacy(hitState);
     }
 
     public void DieNow()
@@ -232,16 +163,6 @@ public class EnemyAI : MonoBehaviour
         if (!SetTrigger(Die)) PlayLegacy(dieState);
         if (agent != null) agent.enabled = false;
         enabled = false;
-    }
-
-    public void PlayTaunt()
-    {
-        if (!dead) SetTrigger(Taunt);
-    }
-
-    public void PlayVictory()
-    {
-        if (!dead) SetTrigger(Victory);
     }
 
     private void FindPlayer()
@@ -268,7 +189,6 @@ public class EnemyAI : MonoBehaviour
             StopLaser();
             SetBool(IsAlert, false);
         }
-
         StopMoving();
         SetMovement(Vector2.zero, 0f);
         PlayLegacy(idleState);
@@ -276,15 +196,10 @@ public class EnemyAI : MonoBehaviour
 
     private void UpdateCombatMovement(float distance)
     {
-        if (attackType == EnemyAttackType.Melee)
-        {
-            UpdateMeleeMovement(distance);
-            return;
-        }
+        if (attackType == EnemyAttackType.Melee) { UpdateMeleeMovement(distance); return; }
 
         Vector3 direction;
         float normalizedSpeed;
-
         if (distance > preferredRange + 1f)
         {
             direction = FlatDirectionToPlayer();
@@ -302,57 +217,45 @@ public class EnemyAI : MonoBehaviour
                 strafeDirection = Random.value < 0.5f ? -1 : 1;
                 nextStrafeTime = Time.time + Random.Range(1.4f, 2.8f);
             }
-
             direction = Vector3.Cross(Vector3.up, FlatDirectionToPlayer()) * strafeDirection;
             normalizedSpeed = 0.5f;
         }
-
         Move(direction, normalizedSpeed);
     }
 
     private void UpdateMeleeMovement(float distance)
     {
-        if (distance > meleeRange)
-        {
-            float normalizedSpeed = distance > meleeRange + 4f ? 1f : 0.85f;
-            float targetSpeed = moveSpeed * normalizedSpeed;
-
-            if (agent.enabled && agent.isOnNavMesh)
-            {
-                agent.speed = targetSpeed;
-                agent.isStopped = false;
-                agent.SetDestination(player.position);
-            }
-            else
-            {
-                Vector3 direction = FlatDirectionToPlayer();
-                transform.position += direction * targetSpeed * Time.deltaTime;
-            }
-
-            Vector3 moveDir = agent.enabled && agent.isOnNavMesh && agent.velocity.sqrMagnitude > 0.01f
-                ? agent.velocity.normalized
-                : FlatDirectionToPlayer();
-            Vector3 localDirection = transform.InverseTransformDirection(moveDir);
-            SetMovement(new Vector2(localDirection.x, localDirection.z), normalizedSpeed);
-            PlayLegacy(walkState);
-        }
-        else
-        {
-            StopMoving();
-            SetMovement(Vector2.zero, 0f);
-        }
-    }
-
-    private void Move(Vector3 direction, float normalizedSpeed)
-    {
-        direction.y = 0f;
-        if (direction.sqrMagnitude < 0.001f)
+        if (distance <= meleeRange)
         {
             StopMoving();
             SetMovement(Vector2.zero, 0f);
             return;
         }
 
+        float normalizedSpeed = distance > meleeRange + 4f ? 1f : 0.85f;
+        float targetSpeed = moveSpeed * normalizedSpeed;
+        if (agent.enabled && agent.isOnNavMesh)
+        {
+            agent.speed = targetSpeed;
+            agent.isStopped = false;
+            agent.SetDestination(player.position);
+        }
+        else
+        {
+            transform.position += FlatDirectionToPlayer() * targetSpeed * Time.deltaTime;
+        }
+
+        Vector3 moveDir = agent.enabled && agent.isOnNavMesh && agent.velocity.sqrMagnitude > 0.01f
+            ? agent.velocity.normalized : FlatDirectionToPlayer();
+        Vector3 localDirection = transform.InverseTransformDirection(moveDir);
+        SetMovement(new Vector2(localDirection.x, localDirection.z), normalizedSpeed);
+        PlayLegacy(walkState);
+    }
+
+    private void Move(Vector3 direction, float normalizedSpeed)
+    {
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.001f) { StopMoving(); SetMovement(Vector2.zero, 0f); return; }
         direction.Normalize();
         float targetSpeed = moveSpeed * normalizedSpeed;
         if (agent.enabled && agent.isOnNavMesh)
@@ -361,10 +264,7 @@ public class EnemyAI : MonoBehaviour
             agent.isStopped = false;
             agent.SetDestination(transform.position + direction * 3f);
         }
-        else
-        {
-            transform.position += direction * targetSpeed * Time.deltaTime;
-        }
+        else transform.position += direction * targetSpeed * Time.deltaTime;
 
         Vector3 localDirection = transform.InverseTransformDirection(direction);
         SetMovement(new Vector2(localDirection.x, localDirection.z), normalizedSpeed);
@@ -379,9 +279,8 @@ public class EnemyAI : MonoBehaviour
     private void FacePlayer()
     {
         Vector3 direction = FlatDirectionToPlayer();
-        if (direction.sqrMagnitude < 0.001f) return;
-        Quaternion targetRotation = Quaternion.LookRotation(direction);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, turnSpeed * Time.deltaTime);
+        if (direction.sqrMagnitude >= 0.001f)
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), turnSpeed * Time.deltaTime);
     }
 
     private void UpdateEyeAim()
@@ -394,11 +293,7 @@ public class EnemyAI : MonoBehaviour
         float blend = 1f - Mathf.Exp(-eyeTrackingSpeed * Time.deltaTime);
         eyeDirection = Vector3.Slerp(eyeDirection, desiredDirection.normalized, blend).normalized;
         if (gunBarrel != null)
-        {
-            gunBarrel.SetPositionAndRotation(
-                eyePosition + eyeDirection * eyeSurfaceOffset,
-                Quaternion.LookRotation(eyeDirection));
-        }
+            gunBarrel.SetPositionAndRotation(eyePosition + eyeDirection * eyeSurfaceOffset, Quaternion.LookRotation(eyeDirection));
     }
 
     private Vector3 FlatDirectionToPlayer()
@@ -427,52 +322,25 @@ public class EnemyAI : MonoBehaviour
         if (!shotPending || Time.time < pendingShotTime) return;
         shotPending = false;
 
-        if (attackType == EnemyAttackType.Melee)
-        {
-            ExecuteMeleeHit();
-            return;
-        }
+        if (attackType == EnemyAttackType.Melee) { ExecuteMeleeHit(); return; }
+        if (effects != null) { StartLaser(); return; }
+        if (bulletPrefab == null) return;
 
-        Transform muzzle = gunBarrel != null ? gunBarrel : transform;
-        Vector3 position = gunBarrel != null
-            ? muzzle.position
-            : transform.position + Vector3.up * projectileOffset + transform.forward;
+        Vector3 position = gunBarrel != null ? gunBarrel.position : transform.position + Vector3.up * projectileOffset + transform.forward;
         Vector3 direction = (player.position + Vector3.up - position).normalized;
-
-        if (effects != null)
-        {
-            StartLaser();
-            return;
-        }
-
-        GameObject projectile = bulletPrefab != null
-            ? Instantiate(bulletPrefab, position, Quaternion.LookRotation(direction))
-            : CreateProjectile(position, direction);
-
-        Bullet bullet = projectile.GetComponent<Bullet>();
-        if (bullet == null) bullet = projectile.AddComponent<Bullet>();
+        GameObject projectile = Instantiate(bulletPrefab, position, Quaternion.LookRotation(direction));
+        Bullet bullet = projectile.GetComponent<Bullet>() ?? projectile.AddComponent<Bullet>();
         bullet.Configure(projectileSpeed, projectileDamage, projectileLifeTime);
         bullet.SetOwner(transform);
     }
 
     private void ExecuteMeleeHit()
     {
-        if (player == null) return;
-        float distance = Vector3.Distance(transform.position, player.position);
-        if (distance <= meleeRange + 1.2f)
-        {
-            PlayerHealth health = player.GetComponent<PlayerHealth>();
-            if (health != null && !health.IsDead)
-            {
-                health.TakeDamage(meleeDamage);
-                PlayMeleeHitFeedback();
-            }
-        }
-    }
+        if (player == null || Vector3.Distance(transform.position, player.position) > meleeRange + 1.2f) return;
+        PlayerHealth health = player.GetComponent<PlayerHealth>();
+        if (health == null || health.IsDead) return;
+        health.TakeDamage(meleeDamage);
 
-    private void PlayMeleeHitFeedback()
-    {
-        if (player == null) return;
         Vector3 hitPos = (transform.position + player.position) * 0.5f + Vector3.up * 1.2f;
         GameObject impactPrefab = Resources.Load<GameObject>("VFX/vfx_Impact_01");
         if (impactPrefab != null)
@@ -480,21 +348,7 @@ public class EnemyAI : MonoBehaviour
             GameObject vfx = Instantiate(impactPrefab, hitPos, Quaternion.LookRotation((player.position - transform.position).normalized));
             vfx.transform.localScale = Vector3.one * 0.75f;
             Destroy(vfx, 1.2f);
-            return;
         }
-
-        GameObject hitSpark = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        hitSpark.name = "MeleeHitSpark";
-        hitSpark.transform.position = hitPos;
-        hitSpark.transform.localScale = Vector3.one * 0.35f;
-        Collider col = hitSpark.GetComponent<Collider>();
-        if (col != null) Destroy(col);
-        Renderer rend = hitSpark.GetComponent<Renderer>();
-        if (rend != null)
-        {
-            rend.material.color = new Color(1f, 0.2f, 0.1f, 0.8f);
-        }
-        Destroy(hitSpark, 0.08f);
     }
 
     private void StartLaser()
@@ -509,12 +363,7 @@ public class EnemyAI : MonoBehaviour
 
     private void UpdateLaser()
     {
-        if (player == null || Time.time >= laserEndTime)
-        {
-            StopLaser();
-            return;
-        }
-
+        if (player == null || Time.time >= laserEndTime) { StopLaser(); return; }
         TraceLaser(false);
     }
 
@@ -528,9 +377,7 @@ public class EnemyAI : MonoBehaviour
 
     private void TraceLaser(bool firstFrame)
     {
-        Vector3 origin = gunBarrel != null
-            ? gunBarrel.position
-            : (eye != null ? eye.position : transform.position + Vector3.up * projectileOffset);
+        Vector3 origin = gunBarrel != null ? gunBarrel.position : (eye != null ? eye.position : transform.position + Vector3.up * projectileOffset);
         Vector3 direction = gunBarrel != null ? gunBarrel.forward : eyeDirection;
         if (direction.sqrMagnitude < 0.001f) direction = transform.forward;
         direction.Normalize();
@@ -541,14 +388,7 @@ public class EnemyAI : MonoBehaviour
         Collider closestCollider = null;
         float closestDistance = maxDistance;
 
-        int count = Physics.RaycastNonAlloc(
-            origin,
-            direction,
-            laserHits,
-            maxDistance,
-            ~0,
-            QueryTriggerInteraction.Ignore);
-
+        int count = Physics.RaycastNonAlloc(origin, direction, laserHits, maxDistance, ~0, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < count; i++)
         {
             RaycastHit hit = laserHits[i];
@@ -559,54 +399,25 @@ public class EnemyAI : MonoBehaviour
             hitNormal = hit.normal;
         }
 
-        if (closestCollider != null)
+        if (closestCollider != null && Time.time >= nextLaserDamageTime)
         {
             PlayerHealth health = closestCollider.GetComponentInParent<PlayerHealth>();
-            if (health != null && Time.time >= nextLaserDamageTime)
+            if (health != null)
             {
                 health.TakeDamage(projectileDamage);
                 nextLaserDamageTime = Time.time + Mathf.Max(laserDamageInterval, 0.05f);
             }
         }
 
-        if (firstFrame)
-        {
-            effects.BeginLaser(origin, endPoint, hitNormal, closestCollider != null);
-        }
-        else
-        {
-            effects.UpdateLaser(origin, endPoint, hitNormal, closestCollider != null);
-        }
+        if (firstFrame) effects.BeginLaser(origin, endPoint, hitNormal, closestCollider != null);
+        else effects.UpdateLaser(origin, endPoint, hitNormal, closestCollider != null);
     }
 
     private Transform FindChild(string childName)
     {
         foreach (Transform child in GetComponentsInChildren<Transform>(true))
-        {
             if (child.name == childName) return child;
-        }
-
         return null;
-    }
-
-    private static GameObject CreateProjectile(Vector3 position, Vector3 direction)
-    {
-        GameObject projectile = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        projectile.name = "EnemyBullet";
-        projectile.transform.SetPositionAndRotation(position, Quaternion.LookRotation(direction));
-        projectile.transform.localScale = Vector3.one * 0.22f;
-        projectile.GetComponent<Collider>().isTrigger = true;
-        projectile.AddComponent<Bullet>();
-        return projectile;
-    }
-
-    private void CacheAnimatorParameters()
-    {
-        if (animator == null) return;
-        foreach (AnimatorControllerParameter parameter in animator.parameters)
-        {
-            animatorParameters.Add(parameter.nameHash);
-        }
     }
 
     private void SetMovement(Vector2 direction, float speed)
@@ -620,9 +431,7 @@ public class EnemyAI : MonoBehaviour
     private void SetFloat(int parameter, float value)
     {
         if (animator != null && animatorParameters.Contains(parameter))
-        {
             animator.SetFloat(parameter, value, 0.12f, Time.deltaTime);
-        }
     }
 
     private void SetInt(int parameter, int value)

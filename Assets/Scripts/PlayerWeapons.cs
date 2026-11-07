@@ -40,14 +40,11 @@ public class PlayerWeapons : MonoBehaviour
     private ContractProgress progress = new ContractProgress();
     private Coroutine reloadRoutine;
     private float lastUseTime = -999f;
-
-    private static AudioClip healSound;
-    private static AudioClip throwSound;
+    private static AudioClip healSound, throwSound;
 
     public int SelectedIndex { get; private set; } = -1;
     public int Count => slots.Length;
     public Slot Current => SelectedIndex >= 0 && SelectedIndex < slots.Length ? slots[SelectedIndex] : null;
-
     public SlotKind CurrentKind => Current != null ? GetKind(Current) : SlotKind.Gun;
 
     public int Ammo
@@ -57,8 +54,7 @@ public class PlayerWeapons : MonoBehaviour
             if (Current == null) return 0;
             var k = GetKind(Current);
             if (k == SlotKind.Gun) return magazines != null && SelectedIndex < magazines.Length ? magazines[SelectedIndex] : 0;
-            if (k == SlotKind.Consumable || k == SlotKind.Throwable) return Current.count;
-            return 0;
+            return (k == SlotKind.Consumable || k == SlotKind.Throwable) ? Current.count : 0;
         }
     }
 
@@ -69,8 +65,7 @@ public class PlayerWeapons : MonoBehaviour
             if (Current == null) return 0;
             var k = GetKind(Current);
             if (k == SlotKind.Gun) return reserves != null && SelectedIndex < reserves.Length ? reserves[SelectedIndex] : 0;
-            if (k == SlotKind.Consumable || k == SlotKind.Throwable) return Current.maxCount;
-            return 0;
+            return (k == SlotKind.Consumable || k == SlotKind.Throwable) ? Current.maxCount : 0;
         }
     }
 
@@ -86,12 +81,12 @@ public class PlayerWeapons : MonoBehaviour
     {
         if (s == null) return SlotKind.Gun;
         if (s.kind != SlotKind.Gun) return s.kind;
-        if (s.melee) return SlotKind.Melee;
-        return SlotKind.Gun;
+        return s.melee ? SlotKind.Melee : SlotKind.Gun;
     }
 
     public SlotKind GetKind(int index) => (index >= 0 && index < slots.Length) ? GetKind(slots[index]) : SlotKind.Gun;
     public int GetCount(int index) => (index >= 0 && index < slots.Length) ? slots[index].count : 0;
+    public string GetLabel(int index) => index >= 0 && index < slots.Length ? slots[index].label : "";
 
     private void Awake()
     {
@@ -102,8 +97,7 @@ public class PlayerWeapons : MonoBehaviour
     }
 
     private void Start() { if (slots.Length > 0) Equip(Mathf.Clamp(startingSlot, 0, slots.Length - 1)); }
-    public string GetLabel(int index) => index >= 0 && index < slots.Length ? slots[index].label : "";
-    
+
     public int Capacity(int index)
     {
         if (index < 0 || index >= slots.Length) return 0;
@@ -121,28 +115,11 @@ public class PlayerWeapons : MonoBehaviour
             if (k == SlotKind.Gun)
             {
                 magazines[i] = Capacity(i);
-                if (progress != null)
-                {
-                    reserves[i] = slots[i].automatic ? progress.rifleAmmoReserve : progress.pistolAmmoReserve;
-                }
-                else
-                {
-                    reserves[i] = slots[i].automatic ? 120 : 60;
-                }
+                reserves[i] = progress != null ? (slots[i].automatic ? progress.rifleAmmoReserve : progress.pistolAmmoReserve) : (slots[i].automatic ? 120 : 60);
             }
-            else if (k == SlotKind.Consumable)
-            {
-                slots[i].count = progress != null ? progress.healthPotionCount : 3;
-            }
-            else if (k == SlotKind.Throwable)
-            {
-                slots[i].count = progress != null ? progress.grenadeCount : 3;
-            }
-            else
-            {
-                magazines[i] = 0;
-                reserves[i] = 0;
-            }
+            else if (k == SlotKind.Consumable) slots[i].count = progress != null ? progress.healthPotionCount : 3;
+            else if (k == SlotKind.Throwable) slots[i].count = progress != null ? progress.grenadeCount : 3;
+            else { magazines[i] = 0; reserves[i] = 0; }
         }
     }
 
@@ -160,8 +137,7 @@ public class PlayerWeapons : MonoBehaviour
     {
         get
         {
-            if (slots == null) return -1;
-            for (int i = 0; i < slots.Length; i++)
+            for (int i = 0; slots != null && i < slots.Length; i++)
                 if (slots[i] != null && slots[i].kind == SlotKind.Consumable) return i;
             return -1;
         }
@@ -171,63 +147,22 @@ public class PlayerWeapons : MonoBehaviour
     {
         get
         {
-            if (slots == null) return -1;
-            for (int i = 0; i < slots.Length; i++)
+            for (int i = 0; slots != null && i < slots.Length; i++)
                 if (slots[i] != null && slots[i].kind == SlotKind.Throwable) return i;
             return -1;
         }
     }
 
-    public bool CanBuyPotion => PotionSlotIndex >= 0 && slots[PotionSlotIndex].count < ContractProgress.MaxPotions;
-    public bool CanBuyGrenade => GrenadeSlotIndex >= 0 && slots[GrenadeSlotIndex].count < ContractProgress.MaxGrenades;
-    public bool CanBuyPistolAmmo => reserves != null && reserves.Length > 0 && reserves[0] < ContractProgress.MaxPistolReserve;
-    public bool CanBuyRifleAmmo => reserves != null && reserves.Length > 1 && reserves[1] < ContractProgress.MaxRifleReserve;
-
     public int PotionCount => PotionSlotIndex >= 0 ? slots[PotionSlotIndex].count : (progress != null ? progress.healthPotionCount : 0);
-    public int PotionMaxCount => ContractProgress.MaxPotions;
     public int GrenadeCount => GrenadeSlotIndex >= 0 ? slots[GrenadeSlotIndex].count : (progress != null ? progress.grenadeCount : 0);
-    public int GrenadeMaxCount => ContractProgress.MaxGrenades;
     public int PistolReserve => (reserves != null && reserves.Length > 0) ? reserves[0] : (progress != null ? progress.pistolAmmoReserve : 0);
     public int RifleReserve => (reserves != null && reserves.Length > 1) ? reserves[1] : (progress != null ? progress.rifleAmmoReserve : 0);
-
-    private bool AddSlotItem(int slotIndex, int amount, int max, System.Action<int> updateProgress, string msg, Color color)
-    {
-        if (slotIndex < 0 || slots[slotIndex].count >= max) return false;
-        slots[slotIndex].count = Mathf.Min(max, slots[slotIndex].count + amount);
-        if (progress != null) updateProgress(slots[slotIndex].count);
-        Changed?.Invoke();
-        StatusMessage?.Invoke($"{msg} ({slots[slotIndex].count}/{max})", color);
-        return true;
-    }
-
-    private bool AddReserveAmmo(int reserveIndex, int amount, int max, System.Action<int> updateProgress, string msg, Color color)
-    {
-        if (reserves == null || reserveIndex >= reserves.Length || reserves[reserveIndex] >= max) return false;
-        reserves[reserveIndex] = Mathf.Min(max, reserves[reserveIndex] + amount);
-        if (progress != null) updateProgress(reserves[reserveIndex]);
-        Changed?.Invoke();
-        StatusMessage?.Invoke($"{msg} ({reserves[reserveIndex]}/{max})", color);
-        return true;
-    }
-
-    public bool AddPotion(int amount = 1) =>
-        AddSlotItem(PotionSlotIndex, amount, ContractProgress.MaxPotions, c => progress.healthPotionCount = c, "+1 Bình Máu", new Color(1f, 0.35f, 0.45f));
-
-    public bool AddGrenade(int amount = 1) =>
-        AddSlotItem(GrenadeSlotIndex, amount, ContractProgress.MaxGrenades, c => progress.grenadeCount = c, "+1 Lựu Đạn", new Color(1f, 0.8f, 0.25f));
-
-    public bool AddPistolAmmo(int amount = 30) =>
-        AddReserveAmmo(0, amount, ContractProgress.MaxPistolReserve, r => progress.pistolAmmoReserve = r, "+30 Đạn Súng Lục", new Color(0.35f, 0.9f, 1f));
-
-    public bool AddRifleAmmo(int amount = 60) =>
-        AddReserveAmmo(1, amount, ContractProgress.MaxRifleReserve, r => progress.rifleAmmoReserve = r, "+60 Đạn Súng Trường", new Color(0.35f, 0.9f, 1f));
 
     private void ConfigureCurrent()
     {
         Slot selected = Current;
         if (selected == null) return;
-        var k = GetKind(selected);
-        bool isGun = k == SlotKind.Gun;
+        bool isGun = GetKind(selected) == SlotKind.Gun;
         shoot.Configure(selected.muzzle, selected.damage * progress.DamageMultiplier, selected.cooldown, selected.range, isGun);
         melee.Configure((selected.melee ? selected.damage : 35f) * progress.DamageMultiplier,
             selected.melee ? selected.cooldown : 0.55f, selected.melee ? selected.range : 2f);
@@ -235,10 +170,10 @@ public class PlayerWeapons : MonoBehaviour
 
     public bool Equip(int index)
     {
-        if (index < 0 || index >= slots.Length || index == SelectedIndex || (health != null && health.IsDead)) return false;
-        if (slots[index].model == null) return false;
+        if (index < 0 || index >= slots.Length || index == SelectedIndex || (health != null && health.IsDead) || slots[index].model == null) return false;
         CancelReload();
-        if (melee != null) melee.CancelAttack(); motor.SetFiring(false);
+        if (melee != null) melee.CancelAttack();
+        motor.SetFiring(false);
         for (int i = 0; i < slots.Length; i++) if (slots[i].model != null) slots[i].model.SetActive(i == index);
         SelectedIndex = index; ConfigureCurrent(); Changed?.Invoke(); return true;
     }
@@ -249,27 +184,22 @@ public class PlayerWeapons : MonoBehaviour
         motor.FaceCameraDirection();
 
         var k = GetKind(Current);
-        if (k == SlotKind.Consumable)
-        {
-            return UseConsumable();
-        }
-        else if (k == SlotKind.Throwable)
-        {
-            return ThrowItem();
-        }
-        else if (k == SlotKind.Gun)
+        if (k == SlotKind.Consumable) return UseConsumable();
+        if (k == SlotKind.Throwable) return ThrowItem();
+        if (k == SlotKind.Gun)
         {
             if (Ammo <= 0) { Reload(); return false; }
             if (!shoot.Shoot()) return false;
             magazines[SelectedIndex]--;
         }
-        else // Melee
+        else
         {
             if (!melee.Attack(CurrentMeleeTiming)) return false;
             motor.PlayMeleeAnimation();
         }
 
-        Attacked?.Invoke(); return true;
+        Attacked?.Invoke();
+        return true;
     }
 
     private bool UseConsumable()
@@ -296,40 +226,19 @@ public class PlayerWeapons : MonoBehaviour
         Current.count--;
         if (progress != null) progress.healthPotionCount = Current.count;
 
-        // Spawn Heal VFX
-        SpawnHealVfx();
+        GameObject vfxPrefab = Current.itemPrefab != null ? Current.itemPrefab : Resources.Load<GameObject>("VFX/vfx_Heal_01");
+        if (vfxPrefab != null)
+        {
+            GameObject vfx = Instantiate(vfxPrefab, transform.position + Vector3.up * 0.1f, Quaternion.identity, transform);
+            Destroy(vfx, 3.5f);
+        }
 
-        // Play Sound
         PlayHealSound();
-
-        // Popup
         StatusMessage?.Invoke("+" + Mathf.CeilToInt(healAmount) + " HP", new Color(0.2f, 1f, 0.5f));
-
         motor.PlayMeleeAnimation();
         Changed?.Invoke();
         Attacked?.Invoke();
         return true;
-    }
-
-    private void SpawnHealVfx()
-    {
-        GameObject vfxPrefab = Current.itemPrefab;
-        if (vfxPrefab == null)
-        {
-            vfxPrefab = Resources.Load<GameObject>("VFX/vfx_Heal_01");
-            if (vfxPrefab == null)
-            {
-#if UNITY_EDITOR
-                vfxPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/DL/GabrielAguiarProductions/1/FreeQuickEffectsVol1/Prefabs/vfx_Heal_01.prefab");
-#endif
-            }
-        }
-        if (vfxPrefab != null)
-        {
-            GameObject vfx = Instantiate(vfxPrefab, transform.position + Vector3.up * 0.1f, Quaternion.identity);
-            vfx.transform.SetParent(transform, true);
-            Destroy(vfx, 3.5f);
-        }
     }
 
     private bool ThrowItem()
@@ -351,31 +260,18 @@ public class PlayerWeapons : MonoBehaviour
         Vector3 camRight = cam != null ? cam.transform.right : transform.right;
 
         Vector3 spawnPos = camPos + camFwd * 0.55f + camRight * 0.18f - Vector3.up * 0.1f;
-        Vector3 throwVel = camFwd * 18f + Vector3.up * 3.5f;
-        if (motor != null) throwVel += motor.Velocity * 0.35f;
+        Vector3 throwVel = camFwd * 18f + Vector3.up * 3.5f + (motor != null ? motor.Velocity * 0.35f : Vector3.zero);
 
-        GameObject grenadePrefab = Current.itemPrefab;
-        if (grenadePrefab == null)
+        if (Current.itemPrefab != null)
         {
-#if UNITY_EDITOR
-            grenadePrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Items/ThrownGrenade.prefab");
-#endif
-        }
-
-        if (grenadePrefab != null)
-        {
-            GameObject g = Instantiate(grenadePrefab, spawnPos, UnityEngine.Random.rotation);
+            GameObject g = Instantiate(Current.itemPrefab, spawnPos, UnityEngine.Random.rotation);
             var rb = g.GetComponent<Rigidbody>();
             if (rb != null)
             {
                 rb.linearVelocity = throwVel;
                 rb.angularVelocity = UnityEngine.Random.insideUnitSphere * 14f;
             }
-            var proj = g.GetComponent<GrenadeProjectile>();
-            if (proj != null)
-            {
-                proj.Initialize(null, Current.damage > 0 ? Current.damage : 120f, Current.range > 0 ? Current.range : 6.5f);
-            }
+            g.GetComponent<GrenadeProjectile>()?.Initialize(null, Current.damage > 0 ? Current.damage : 120f, Current.range > 0 ? Current.range : 6.5f);
         }
 
         PlayThrowSound();
@@ -398,16 +294,13 @@ public class PlayerWeapons : MonoBehaviour
         const float duration = 0.55f;
         int sampleCount = Mathf.CeilToInt(sampleRate * duration);
         float[] samples = new float[sampleCount];
-
         for (int i = 0; i < sampleCount; i++)
         {
             float t = i / (float)sampleRate;
-            float freq = Mathf.Lerp(440f, 880f, t / duration); // Rising chime
+            float freq = Mathf.Lerp(440f, 880f, t / duration);
             float env = Mathf.Sin(Mathf.PI * (t / duration));
-            float harmonic = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.7f + Mathf.Sin(4f * Mathf.PI * freq * t) * 0.3f;
-            samples[i] = harmonic * env * 0.6f;
+            samples[i] = (Mathf.Sin(2f * Mathf.PI * freq * t) * 0.7f + Mathf.Sin(4f * Mathf.PI * freq * t) * 0.3f) * env * 0.6f;
         }
-
         AudioClip clip = AudioClip.Create("HealSound", sampleCount, 1, sampleRate, false);
         clip.SetData(samples, 0);
         return clip;
@@ -427,7 +320,6 @@ public class PlayerWeapons : MonoBehaviour
         int sampleCount = Mathf.CeilToInt(sampleRate * duration);
         float[] samples = new float[sampleCount];
         var rng = new System.Random(1337);
-
         for (int i = 0; i < sampleCount; i++)
         {
             float t = i / (float)sampleRate;
@@ -436,7 +328,6 @@ public class PlayerWeapons : MonoBehaviour
             float whoosh = Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(220f, 110f, t) * t);
             samples[i] = (noise * 0.35f + whoosh * 0.65f) * env * 0.6f;
         }
-
         AudioClip clip = AudioClip.Create("ThrowSound", sampleCount, 1, sampleRate, false);
         clip.SetData(samples, 0);
         return clip;
@@ -477,6 +368,7 @@ public class PlayerWeapons : MonoBehaviour
         if (reloadRoutine != null) StopCoroutine(reloadRoutine);
         reloadRoutine = null; IsReloading = false;
     }
+
     private void OnDisable()
     {
         CancelReload();

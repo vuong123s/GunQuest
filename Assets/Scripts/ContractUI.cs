@@ -7,19 +7,17 @@ using TMPro;
 using UIImage = UnityEngine.UI.Image;
 using Object = UnityEngine.Object;
 
-// Runtime presentation shared by every map. Styled with PixelUIFree assets.
 public class ContractUI : MonoBehaviour
 {
-    private static readonly Color Ink = new Color(.075f,.11f,.15f);
-    private static readonly Color Paper = new Color(.93f,.92f,.86f);
-    private static readonly Color Panel = new Color(.035f,.065f,.095f,.97f);
-    private static readonly Color Tile = new Color(.085f,.13f,.175f);
-    private static readonly Color Muted = new Color(.62f,.71f,.75f);
-    private static readonly Color Accent = new Color(1f,.68f,.26f);
-    private static readonly Color Mint = new Color(.36f,.86f,.72f);
-    private static readonly Color Line = new Color(.19f,.27f,.32f);
-    private static readonly Color White = new Color(.96f,.97f,.95f);
-    private static readonly Color Danger = new Color(1f,.38f,.32f);
+    private static readonly Color Ink = new Color(.075f, .11f, .15f);
+    private static readonly Color Tile = new Color(.085f, .13f, .175f);
+    private static readonly Color Muted = new Color(.62f, .71f, .75f);
+    private static readonly Color Accent = new Color(1f, .68f, .26f);
+    private static readonly Color Mint = new Color(.36f, .86f, .72f);
+    private static readonly Color Line = new Color(.19f, .27f, .32f);
+    private static readonly Color White = new Color(.96f, .97f, .95f);
+    private static readonly Color Danger = new Color(1f, .38f, .32f);
+    private static readonly Vector2 TopLeft = new Vector2(0, 1);
 
     private ContractGame game;
     private PlayerHealth health;
@@ -29,29 +27,20 @@ public class ContractUI : MonoBehaviour
     private Texture2D whiteTexture;
     private Sprite whiteSprite;
 
-    // PixelUI Sprites
     private Sprite spritePanel, spritePanelInset, spriteWindow;
-    private Sprite spriteBtnNormal, spriteBtnPressed, spriteBtnHover, spriteFocus;
-    private Sprite spriteProgressBg, spriteProgressFill;
-    private Sprite spriteBarRed, spriteBarGreen, spriteBarGold, spriteBarBlue;
-    private Sprite spriteBarFillRed, spriteBarFillGold;
-    private Sprite spriteHeart, spriteSword, spriteInfo, spriteCoin, spriteStar;
-    private Sprite spriteIconPistol, spriteIconRifle, spriteIconBat, spriteIconShovel, spriteIconPotion, spriteIconBomb;
+    private Sprite spriteBtnNormal, spriteBtnPressed, spriteFocus;
+    private Sprite spriteProgressBg, spriteBarGreen, spriteBarFillRed, spriteBarFillGold;
+    private Sprite spriteHeart, spriteInfo, spriteCoin, spriteStar;
+    private Sprite spriteIconPistol, spriteIconRifle, spriteIconBat, spriteIconPotion, spriteIconBomb;
 
-    private GameObject hud, menu, shop, summary;
-    private GameObject boardBody, settingsPanel;
-    private Button settingsBoardBtn;
-    private bool boardSettingsOpen = false;
-    private GameObject aboutDialog;
+    private GameObject hud, menu, shop, summary, boardBody, settingsPanel, aboutDialog, upgradesGroup, suppliesGroup;
+    private bool boardSettingsOpen, showingSuppliesTab, lastTabSupplies;
     public bool IsAboutOpen => aboutDialog != null && aboutDialog.activeSelf;
-    private Button aboutBoardBtn, settingsAboutBoard, settingsAboutPause;
 
-    // Settings UI elements
     private Slider masterSlider, sfxSlider, sensSlider, fovSlider;
-    private TMP_Text masterValText, sfxValText, sensValText, fovValText;
-    private TMP_Text invertYText, qualityText, fullscreenText;
+    private TMP_Text masterValText, sfxValText, sensValText, fovValText, invertYText, qualityText, fullscreenText, pauseHeaderBadge;
     private UIImage invertYBg;
-    private TMP_Text pauseHeaderBadge;
+    private Button settingsBoardBtn, aboutBoardBtn, settingsAboutBoard, settingsAboutPause;
     private Button settingsResume, settingsRetry, settingsBoard, settingsQuit, settingsClose, settingsReset;
 
     private RectTransform shell, objectivePanel, slotStrip, healthPanel, ammoPanel, exitPanel, hudWalletPanel;
@@ -60,38 +49,27 @@ public class ContractUI : MonoBehaviour
     private int pendingPopupAmount;
     private TMP_Text objectiveTitle, objectiveBody, healthValue, ammoValue, reserveValue, weaponName, ammoHint, exitText, hotbarTitle;
     private TMP_Text wallet, completed, eyebrow, missionTitle, briefing, rewardCaption, rewardValue, rewardHint;
-    private TMP_Text sideTitle, sideIntro, currentGear, summaryMission, summaryGear;
-    private TMP_Text damageValue, damagePrice, magazineValue, magazinePrice;
-    private TMP_Text shopTabUpgradeText, shopTabSupplyText;
-    private Button shopTabUpgradeBtn, shopTabSupplyBtn;
-    private int selectedMapIndex = 0;
-    private int lastSelectedMap = -1;
-    private Button map1Btn, map2Btn;
-    private TMP_Text map1BtnText, map2BtnText;
-    private GameObject upgradesGroup, suppliesGroup;
-    private bool showingSuppliesTab = false;
+    private TMP_Text currentGear, summaryMission, summaryGear, damageValue, damagePrice, magazineValue, magazinePrice;
+    private TMP_Text shopTabUpgradeText, shopTabSupplyText, map1BtnText, map2BtnText;
+    private Button shopTabUpgradeBtn, shopTabSupplyBtn, map1Btn, map2Btn;
     private Button buyPotionBtn, buyGrenadeBtn, buyPistolAmmoBtn, buyRifleAmmoBtn;
-    private TMP_Text potionCountText, potionPriceText;
-    private TMP_Text grenadeCountText, grenadePriceText;
-    private TMP_Text pistolAmmoCountText, pistolAmmoPriceText;
-    private TMP_Text rifleAmmoCountText, rifleAmmoPriceText;
+    private TMP_Text potionCountText, potionPriceText, grenadeCountText, grenadePriceText;
+    private TMP_Text pistolAmmoCountText, pistolAmmoPriceText, rifleAmmoCountText, rifleAmmoPriceText;
     private Image healthFill, healthChip, missionStripe;
     private Button start, resume, retry, pausedRetry, board, damageUpgrade, magazineUpgrade;
     private Image[] slotTiles, slotMarks, slotIcons;
     private TMP_Text[] slotNumbers, slotCounts;
     private ContractGame.Phase menuPhase = (ContractGame.Phase)(-1);
+    private int selectedMapIndex, lastSelectedMap = -1;
     private int lastCredits = -1, lastDamage = -1, lastMagazine = -1, lastCompleted = -1;
     private int lastPotionCount = -1, lastGrenadeCount = -1, lastPistolAmmo = -1, lastRifleAmmo = -1;
-    private bool lastTabSupplies = false;
-    private static readonly Vector2 TopLeft = new Vector2(0, 1);
 
     public void Initialize(ContractGame owner, PlayerHealth player)
     {
         game = owner; health = player; weapons = player != null ? player.GetComponent<PlayerWeapons>() : null;
         if (game != null) game.CreditsAdded += OnCreditsAdded;
         if (weapons != null) weapons.StatusMessage += OnStatusMessage;
-        font = Resources.Load<TMP_FontAsset>("GunQuestUIFont");
-        if (font == null) font = TMP_Settings.defaultFontAsset;
+        font = Resources.Load<TMP_FontAsset>("GunQuestUIFont") ?? TMP_Settings.defaultFontAsset;
         whiteTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
         whiteTexture.SetPixel(0, 0, Color.white); whiteTexture.Apply();
         whiteSprite = Sprite.Create(whiteTexture, new Rect(0, 0, 1, 1), Vector2.one * .5f);
@@ -117,20 +95,14 @@ public class ContractUI : MonoBehaviour
         spritePanelInset = LoadSprite("panel_inset");
         spriteBtnNormal = LoadSprite("button_normal");
         spriteBtnPressed = LoadSprite("button_pressed");
-        spriteBtnHover = LoadSprite("button_hover");
         spriteFocus = LoadSprite("focus");
         spriteProgressBg = LoadSprite("progress_bg");
-        spriteProgressFill = LoadSprite("progress_fill");
-        spriteBarRed = LoadSprite("bar_red");
         spriteBarGreen = LoadSprite("bar_green");
-        spriteBarGold = LoadSprite("bar_gold");
-        spriteBarBlue = LoadSprite("bar_blue");
         spriteBarFillRed = LoadSprite("bar_fill_red");
         spriteBarFillGold = LoadSprite("bar_fill_gold");
-        if (spriteBarFillRed == whiteSprite) spriteBarFillRed = spriteBarRed;
-        if (spriteBarFillGold == whiteSprite) spriteBarFillGold = spriteBarGold;
+        if (spriteBarFillRed == whiteSprite) spriteBarFillRed = LoadSprite("bar_red");
+        if (spriteBarFillGold == whiteSprite) spriteBarFillGold = LoadSprite("bar_gold");
         spriteHeart = LoadSprite("heart");
-        spriteSword = LoadSprite("sword");
         spriteInfo = LoadSprite("info");
         spriteCoin = LoadSprite("coin");
         spriteStar = LoadSprite("star");
@@ -138,16 +110,11 @@ public class ContractUI : MonoBehaviour
         spriteIconPistol = LoadSprite("icon_pistol");
         spriteIconRifle = LoadSprite("icon_rifle");
         spriteIconBat = LoadSprite("icon_bat");
-        spriteIconShovel = LoadSprite("icon_shovel");
         spriteIconPotion = LoadSprite("icon_potion");
         spriteIconBomb = LoadSprite("icon_bomb");
     }
 
-    private Sprite LoadSprite(string path)
-    {
-        var s = Resources.Load<Sprite>("PixelUI/" + path);
-        return s != null ? s : whiteSprite;
-    }
+    private Sprite LoadSprite(string path) => Resources.Load<Sprite>("PixelUI/" + path) ?? whiteSprite;
 
     private void BuildMenu(Transform root)
     {
@@ -156,7 +123,6 @@ public class ContractUI : MonoBehaviour
         Stretch(backdrop.rectTransform);
         shell = Rect("MenuLayout", menu.transform, new Vector2(-560, 320), new Vector2(1120, 640), Vector2.one * .5f);
 
-        // Header
         Label(shell, "Brand", "GUNQUEST", new Vector2(0, -2), new Vector2(420, 56), 44, White, true);
         Label(shell, "BrandCaption", "TRẠM NHIỆM VỤ  /  SẴN SÀNG LÊN ĐƯỜNG", new Vector2(3, -61), new Vector2(460, 28), 16, Mint);
 
@@ -165,13 +131,12 @@ public class ContractUI : MonoBehaviour
         Label(funds.transform, "Caption", "NGÂN QUỸ", new Vector2(48, -10), new Vector2(170, 22), 15, Muted);
         wallet = Label(funds.transform, "Credits", "", new Vector2(48, -32), new Vector2(170, 36), 26, Accent, true);
 
-        settingsBoardBtn = ButtonAt(shell, "SettingsBtn", "CÀI ĐẶT", new Vector2(720, 0), new Vector2(125, 44), Tile, Mint, () => ToggleSettingsFromBoard(), 16);
-        aboutBoardBtn = ButtonAt(shell, "AboutBtn", "ABOUT", new Vector2(855, 0), new Vector2(120, 44), Tile, Accent, () => OpenAbout(), 16);
+        settingsBoardBtn = ButtonAt(shell, "SettingsBtn", "CÀI ĐẶT", new Vector2(720, 0), new Vector2(125, 44), Tile, Mint, ToggleSettingsFromBoard, 16);
+        aboutBoardBtn = ButtonAt(shell, "AboutBtn", "ABOUT", new Vector2(855, 0), new Vector2(120, 44), Tile, Accent, OpenAbout, 16);
         ButtonAt(shell, "Quit", "THOÁT GAME", new Vector2(985, 0), new Vector2(135, 44), Tile, White, () => game.Quit(), 16);
         completed = Label(shell, "Completed", "", new Vector2(720, -56), new Vector2(400, 26), 15, Muted); completed.alignment = TextAlignmentOptions.Right;
         Image(shell, "HeaderLine", Line, new Vector2(0, -94), new Vector2(1120, 1), TopLeft);
 
-        // Board Body Container (holds mission, shop, summary)
         boardBody = Group("BoardBody", shell);
 
         var mission = SlicedImage(boardBody.transform, "MissionPaper", spritePanel, new Color(.95f, .94f, .90f), new Vector2(0, -112), new Vector2(700, 366), TopLeft, 0.5f);
@@ -179,10 +144,8 @@ public class ContractUI : MonoBehaviour
         missionStripe = Image(mission.transform, "StateStripe", Accent, new Vector2(10, -10), new Vector2(6, 346), TopLeft);
         eyebrow = Label(mission.transform, "State", "", new Vector2(30, -18), new Vector2(640, 22), 15, new Color(.34f, .39f, .39f), true);
 
-        // 2 Map Selection Buttons side-by-side inside Left Panel
         map1Btn = ButtonAt(mission.transform, "Map1Select", "MAP 1: THUNG LŨNG LÁ ĐỎ", new Vector2(26, -42), new Vector2(318, 50), Tile, White, () => SelectMap(0), 16);
         map1BtnText = map1Btn.GetComponentInChildren<TMP_Text>();
-
         map2Btn = ButtonAt(mission.transform, "Map2Select", "MAP 2: ĐÈO BĂNG GIÁ", new Vector2(352, -42), new Vector2(318, 50), Tile, White, () => SelectMap(1), 16);
         map2BtnText = map2Btn.GetComponentInChildren<TMP_Text>();
 
@@ -194,35 +157,27 @@ public class ContractUI : MonoBehaviour
         rewardValue = Label(mission.transform, "Reward", "", new Vector2(32, -300), new Vector2(270, 44), 30, Ink, true);
         rewardHint = Label(mission.transform, "RewardHint", "", new Vector2(310, -288), new Vector2(360, 50), 16, new Color(.34f, .39f, .39f));
 
-        start = ButtonAt(boardBody.transform, "AcceptContract", "NHẬN NHIỆM VỤ   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => OnStartButtonClicked(), 24);
+        start = ButtonAt(boardBody.transform, "AcceptContract", "NHẬN NHIỆM VỤ   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, OnStartButtonClicked, 24);
         resume = ButtonAt(boardBody.transform, "Resume", "TIẾP TỤC LƯỢT SĂN   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => game.Resume(), 24);
         retry = ButtonAt(boardBody.transform, "Retry", "CHƠI LẠI   →", new Vector2(0, -496), new Vector2(700, 60), Accent, Ink, () => { if (game.State == ContractGame.Phase.Won) game.NextStage(); else game.Retry(); }, 24);
 
-        // Right Panel (PreparationPanel) - NO sideTitle, tabs sit right at top
         var side = SlicedImage(boardBody.transform, "PreparationPanel", spritePanel, Color.white, new Vector2(724, -112), new Vector2(396, 444), TopLeft, 0.5f);
-
-        // Shop Tabs (NÂNG CẤP | MUA VẬT PHẨM) positioned cleanly side-by-side at the top
-        shop = Group("ShopContainer", side.transform); shopTabUpgradeBtn = ButtonAt(shop.transform, "TabUpgrades", "NÂNG CẤP", new Vector2(16, -16), new Vector2(178, 38), Tile, Accent, () => SetShopTab(false), 16);
+        shop = Group("ShopContainer", side.transform);
+        shopTabUpgradeBtn = ButtonAt(shop.transform, "TabUpgrades", "NÂNG CẤP", new Vector2(16, -16), new Vector2(178, 38), Tile, Accent, () => SetShopTab(false), 16);
         shopTabUpgradeText = shopTabUpgradeBtn.GetComponentInChildren<TMP_Text>();
-
         shopTabSupplyBtn = ButtonAt(shop.transform, "TabSupplies", "MUA VẬT PHẨM", new Vector2(202, -16), new Vector2(178, 38), Tile, White, () => SetShopTab(true), 16);
         shopTabSupplyText = shopTabSupplyBtn.GetComponentInChildren<TMP_Text>();
 
-
-
-        // 1. Upgrades Tab Content
         upgradesGroup = Group("UpgradesGroup", shop.transform);
         damageUpgrade = UpgradeAt(upgradesGroup.transform, "DamageUpgrade", "SÁT THƯƠNG", -66, true, out damageValue, out damagePrice);
         magazineUpgrade = UpgradeAt(upgradesGroup.transform, "MagazineUpgrade", "BĂNG ĐẠN", -186, false, out magazineValue, out magazinePrice);
         currentGear = Label(upgradesGroup.transform, "CurrentGear", "", new Vector2(24, -308), new Vector2(348, 64), 16, Muted);
 
-        // 2. Supplies Tab Content (Bình Máu, Lựu Đạn, Đạn Súng Lục, Đạn Rifle)
         suppliesGroup = Group("SuppliesGroup", shop.transform);
         buyPotionBtn = SupplyItemAt(suppliesGroup.transform, "BuyPotion", "BÌNH MÁU (+50 HP)", -64, spriteIconPotion, () => { game.BuyPotion(); Refresh(); }, out potionCountText, out potionPriceText);
         buyGrenadeBtn = SupplyItemAt(suppliesGroup.transform, "BuyGrenade", "LỰU ĐẠN NỔ (120 DMG)", -140, spriteIconBomb, () => { game.BuyGrenade(); Refresh(); }, out grenadeCountText, out grenadePriceText);
         buyPistolAmmoBtn = SupplyItemAt(suppliesGroup.transform, "BuyPistolAmmo", "ĐẠN SÚNG LỤC (+30)", -216, spriteIconPistol, () => { game.BuyPistolAmmo(); Refresh(); }, out pistolAmmoCountText, out pistolAmmoPriceText);
         buyRifleAmmoBtn = SupplyItemAt(suppliesGroup.transform, "BuyRifleAmmo", "ĐẠN SÚNG TRƯỜNG (+60)", -292, spriteIconRifle, () => { game.BuyRifleAmmo(); Refresh(); }, out rifleAmmoCountText, out rifleAmmoPriceText);
-
         SetShopTab(false);
 
         summary = Group("RunSummary", side.transform);
@@ -232,7 +187,6 @@ public class ContractUI : MonoBehaviour
         pausedRetry = ButtonAt(summary.transform, "RestartPaused", "CHƠI LẠI TỪ ĐẦU", new Vector2(24, -195), new Vector2(348, 48), Tile, White, () => game.Retry(), 18);
         board = ButtonAt(summary.transform, "ReturnToBoard", "VỀ BẢNG NHIỆM VỤ", new Vector2(24, -255), new Vector2(348, 48), Tile, White, () => game.ReturnToBoard(), 18);
 
-        // Settings Panel (Shown during Pause or when opened via Settings button)
         BuildSettingsPanel(shell);
         BuildAboutDialog(menu.transform);
 
@@ -247,98 +201,79 @@ public class ContractUI : MonoBehaviour
     {
         settingsPanel = Group("SettingsPanel", parent);
         var r = (RectTransform)settingsPanel.transform;
-        r.anchorMin = r.anchorMax = TopLeft;
-        r.pivot = TopLeft;
+        r.anchorMin = r.anchorMax = r.pivot = TopLeft;
         r.anchoredPosition = new Vector2(0, -106);
         r.sizeDelta = new Vector2(1120, 470);
 
-        // Header status badge
         pauseHeaderBadge = Label(settingsPanel.transform, "HeaderBadge", "CÀI ĐẶT TRÒ CHƠI", new Vector2(0, -2), new Vector2(1120, 26), 16, Accent, true);
         pauseHeaderBadge.alignment = TextAlignmentOptions.Center;
 
-        // ------------------ LEFT CARD: ÂM THANH & ĐIỀU KHIỂN ------------------
         var leftCard = SlicedImage(settingsPanel.transform, "LeftCard", spritePanel, Color.white, new Vector2(0, -28), new Vector2(545, 372), TopLeft, 0.5f);
         SlicedImage(leftCard.transform, "Inset", spritePanelInset, new Color(0.12f, 0.1f, 0.08f, 0.5f), new Vector2(8, -8), new Vector2(529, 356), TopLeft, 0.5f);
         IconImage(leftCard.transform, "Icon", spriteInfo, Mint, new Vector2(18, -14), new Vector2(20, 20), TopLeft);
         Label(leftCard.transform, "Title", "ÂM THANH & ĐIỀU KHIỂN", new Vector2(46, -14), new Vector2(470, 24), 18, Mint, true);
         Image(leftCard.transform, "Divider", Line, new Vector2(16, -40), new Vector2(513, 1), TopLeft);
 
-        // Item 1: Master Volume
         Label(leftCard.transform, "MasterVolLabel", "ÂM LƯỢNG TỔNG", new Vector2(20, -50), new Vector2(280, 24), 16, White, true);
         masterValText = Label(leftCard.transform, "MasterVolVal", "100%", new Vector2(340, -50), new Vector2(175, 24), 16, Accent, true);
         masterValText.alignment = TextAlignmentOptions.Right;
         masterSlider = CreatePixelSlider(leftCard.transform, "MasterSlider", 0f, 1f, 1f, new Vector2(20, -78), new Vector2(505, 26), OnMasterSliderChanged);
 
-        // Item 2: SFX Volume
         Label(leftCard.transform, "SfxVolLabel", "ÂM LƯỢNG HIỆU ỨNG (SFX)", new Vector2(20, -116), new Vector2(280, 24), 16, White, true);
         sfxValText = Label(leftCard.transform, "SfxVolVal", "80%", new Vector2(340, -116), new Vector2(175, 24), 16, Accent, true);
         sfxValText.alignment = TextAlignmentOptions.Right;
         sfxSlider = CreatePixelSlider(leftCard.transform, "SfxSlider", 0f, 1f, 0.8f, new Vector2(20, -144), new Vector2(505, 26), OnSfxSliderChanged);
 
-        // Item 3: Mouse Sensitivity
         Label(leftCard.transform, "SensLabel", "ĐỘ NHẠY CHUỘT", new Vector2(20, -182), new Vector2(250, 24), 16, White, true);
         sensValText = Label(leftCard.transform, "SensVal", "1.0x (0.12)", new Vector2(300, -182), new Vector2(215, 24), 16, Accent, true);
         sensValText.alignment = TextAlignmentOptions.Right;
         sensSlider = CreatePixelSlider(leftCard.transform, "SensSlider", 0.02f, 0.36f, 0.12f, new Vector2(20, -210), new Vector2(505, 26), OnSensitivitySliderChanged);
 
-        // Item 4: Invert Y Axis
         Label(leftCard.transform, "InvertLabel", "ĐẢO TRỤC CHUỘT Y", new Vector2(20, -260), new Vector2(270, 36), 16, White, true);
         var invertBtn = ButtonAt(leftCard.transform, "InvertBtn", "", new Vector2(300, -256), new Vector2(225, 42), Tile, White, ToggleInvertY, 15);
         invertYBg = invertBtn.GetComponent<UIImage>();
         invertYText = invertBtn.GetComponentInChildren<TMP_Text>();
 
-        // ------------------ RIGHT CARD: HÌNH ẢNH & HIỂN THỊ ------------------
         var rightCard = SlicedImage(settingsPanel.transform, "RightCard", spritePanel, Color.white, new Vector2(575, -28), new Vector2(545, 372), TopLeft, 0.5f);
         SlicedImage(rightCard.transform, "Inset", spritePanelInset, new Color(0.12f, 0.1f, 0.08f, 0.5f), new Vector2(8, -8), new Vector2(529, 356), TopLeft, 0.5f);
         IconImage(rightCard.transform, "Icon", spriteStar, Mint, new Vector2(18, -14), new Vector2(20, 20), TopLeft);
         Label(rightCard.transform, "Title", "HÌNH ẢNH & HIỂN THỊ", new Vector2(46, -14), new Vector2(470, 24), 18, Mint, true);
         Image(rightCard.transform, "Divider", Line, new Vector2(16, -40), new Vector2(513, 1), TopLeft);
 
-        // Item 5: Field of View (FOV)
         Label(rightCard.transform, "FovLabel", "GÓC NHÌN (FIELD OF VIEW)", new Vector2(20, -50), new Vector2(280, 24), 16, White, true);
         fovValText = Label(rightCard.transform, "FovVal", "75°", new Vector2(340, -50), new Vector2(175, 24), 16, Accent, true);
         fovValText.alignment = TextAlignmentOptions.Right;
         fovSlider = CreatePixelSlider(rightCard.transform, "FovSlider", 60f, 105f, 75f, new Vector2(20, -78), new Vector2(505, 26), OnFOVSliderChanged);
 
-        // Item 6: Quality Level
         Label(rightCard.transform, "QualityLabel", "CHẤT LƯỢNG ĐỒ HỌA", new Vector2(20, -122), new Vector2(260, 24), 16, White, true);
         var qualityBtn = ButtonAt(rightCard.transform, "QualityBtn", "", new Vector2(295, -116), new Vector2(230, 42), Tile, Mint, CycleQuality, 15);
         qualityText = qualityBtn.GetComponentInChildren<TMP_Text>();
 
-        // Item 7: Screen Mode
         Label(rightCard.transform, "ScreenLabel", "CHẾ ĐỘ MÀN HÌNH", new Vector2(20, -176), new Vector2(260, 24), 16, White, true);
         var screenBtn = ButtonAt(rightCard.transform, "ScreenBtn", "", new Vector2(295, -170), new Vector2(230, 42), Tile, White, ToggleFullscreen, 15);
         fullscreenText = screenBtn.GetComponentInChildren<TMP_Text>();
 
         Image(rightCard.transform, "Divider3", Line, new Vector2(16, -226), new Vector2(513, 1), TopLeft);
-
-        // Item 8: Reset to Defaults & About in Settings
         settingsReset = ButtonAt(rightCard.transform, "ResetBtn", "MẶC ĐỊNH", new Vector2(20, -244), new Vector2(235, 44), Tile, White, ResetSettingsToDefaults, 15);
-        ButtonAt(rightCard.transform, "AboutSettingBtn", "ABOUT (TÁC GIẢ)", new Vector2(275, -244), new Vector2(250, 44), Tile, Accent, () => OpenAbout(), 15);
-        var note = Label(rightCard.transform, "AutoSaveNote", "Cài đặt được áp dụng tức thì & lưu tự động.", new Vector2(20, -300), new Vector2(505, 22), 14, Mint);
-        note.alignment = TextAlignmentOptions.TopLeft;
+        ButtonAt(rightCard.transform, "AboutSettingBtn", "ABOUT (TÁC GIẢ)", new Vector2(275, -244), new Vector2(250, 44), Tile, Accent, OpenAbout, 15);
+        Label(rightCard.transform, "AutoSaveNote", "Cài đặt được áp dụng tức thì & lưu tự động.", new Vector2(20, -300), new Vector2(505, 22), 14, Mint);
 
-        // ------------------ BOTTOM ACTION BAR ------------------
         settingsResume = ButtonAt(settingsPanel.transform, "ResumeAction", "TIẾP TỤC (ESC)   ▶", new Vector2(0, -412), new Vector2(260, 56), Accent, Ink, () => game.Resume(), 20);
         settingsRetry = ButtonAt(settingsPanel.transform, "RetryAction", "CHƠI LẠI", new Vector2(275, -412), new Vector2(165, 56), Tile, White, () => game.Retry(), 18);
         settingsBoard = ButtonAt(settingsPanel.transform, "BoardAction", "VỀ BẢNG NHIỆM VỤ", new Vector2(455, -412), new Vector2(245, 56), Tile, White, () => game.ReturnToBoard(), 18);
-        settingsAboutPause = ButtonAt(settingsPanel.transform, "AboutPauseAction", "ABOUT", new Vector2(715, -412), new Vector2(165, 56), Tile, Mint, () => OpenAbout(), 18);
+        settingsAboutPause = ButtonAt(settingsPanel.transform, "AboutPauseAction", "ABOUT", new Vector2(715, -412), new Vector2(165, 56), Tile, Mint, OpenAbout, 18);
         settingsQuit = ButtonAt(settingsPanel.transform, "QuitAction", "THOÁT GAME", new Vector2(895, -412), new Vector2(225, 56), Tile, Danger, () => game.Quit(), 18);
 
-        // When opened from Board:
-        settingsClose = ButtonAt(settingsPanel.transform, "CloseAction", "LƯU & ĐÓNG CÀI ĐẶT (ESC)", new Vector2(0, -412), new Vector2(360, 56), Accent, Ink, () => ToggleSettingsFromBoard(), 22);
-        settingsAboutBoard = ButtonAt(settingsPanel.transform, "AboutBoardAction", "ABOUT (NHÓM TÁC GIẢ)", new Vector2(380, -412), new Vector2(260, 56), Tile, Mint, () => OpenAbout(), 18);
-
+        settingsClose = ButtonAt(settingsPanel.transform, "CloseAction", "LƯU & ĐÓNG CÀI ĐẶT (ESC)", new Vector2(0, -412), new Vector2(360, 56), Accent, Ink, ToggleSettingsFromBoard, 22);
+        settingsAboutBoard = ButtonAt(settingsPanel.transform, "AboutBoardAction", "ABOUT (NHÓM TÁC GIẢ)", new Vector2(380, -412), new Vector2(260, 56), Tile, Mint, OpenAbout, 18);
         settingsPanel.SetActive(false);
     }
 
     public void OpenAbout()
     {
-        if (aboutDialog != null)
-        {
-            aboutDialog.SetActive(true);
-            aboutDialog.transform.SetAsLastSibling();
-        }
+        if (aboutDialog == null) return;
+        aboutDialog.SetActive(true);
+        aboutDialog.transform.SetAsLastSibling();
     }
 
     public void CloseAbout()
@@ -346,121 +281,73 @@ public class ContractUI : MonoBehaviour
         if (aboutDialog != null) aboutDialog.SetActive(false);
     }
 
-    public void ToggleAbout()
-    {
-        if (IsAboutOpen) CloseAbout();
-        else OpenAbout();
-    }
-
     private void BuildAboutDialog(Transform parent)
     {
         aboutDialog = Group("AboutDialog", parent);
-        var r = (RectTransform)aboutDialog.transform;
-        r.anchorMin = Vector2.zero;
-        r.anchorMax = Vector2.one;
-        r.offsetMin = Vector2.zero;
-        r.offsetMax = Vector2.zero;
-
-        // Dark dim backdrop (clicking backdrop closes about)
-        var dimBtn = ButtonAt(aboutDialog.transform, "BackdropDim", "", new Vector2(-1500, 1500), new Vector2(3000, 3000), new Color(0.015f, 0.025f, 0.04f, 0.82f), Color.clear, () => CloseAbout(), 10);
+        var dimBtn = ButtonAt(aboutDialog.transform, "BackdropDim", "", new Vector2(-1500, 1500), new Vector2(3000, 3000), new Color(0.015f, 0.025f, 0.04f, 0.82f), Color.clear, CloseAbout, 10);
         var dimRect = (RectTransform)dimBtn.transform;
-        dimRect.anchorMin = new Vector2(0.5f, 0.5f);
-        dimRect.anchorMax = new Vector2(0.5f, 0.5f);
-        dimRect.pivot = new Vector2(0.5f, 0.5f);
+        dimRect.anchorMin = dimRect.anchorMax = dimRect.pivot = new Vector2(0.5f, 0.5f);
         dimRect.anchoredPosition = Vector2.zero;
 
-        // Modal Window (Centered, 660x420)
         var modal = SlicedImage(aboutDialog.transform, "ModalWindow", spriteWindow != null ? spriteWindow : spritePanel, Color.white, new Vector2(-330, 210), new Vector2(660, 420), new Vector2(0.5f, 0.5f), 0.5f);
-        
-        // Inset
         SlicedImage(modal.transform, "Inset", spritePanelInset, new Color(0.12f, 0.1f, 0.08f, 0.65f), new Vector2(8, -8), new Vector2(644, 404), TopLeft, 0.5f);
 
-        // Header Title
         IconImage(modal.transform, "Icon", spriteStar, Accent, new Vector2(24, -20), new Vector2(28, 28), TopLeft);
         Label(modal.transform, "Title", "THÔNG TIN DỰ ÁN  •  ABOUT", new Vector2(62, -18), new Vector2(570, 32), 22, Accent, true);
         Label(modal.transform, "Subtitle", "GUNQUEST 3D  •  ĐỒ ÁN PHÁT TRIỂN GAME", new Vector2(62, -48), new Vector2(570, 22), 15, Mint);
         Image(modal.transform, "Divider", Line, new Vector2(20, -74), new Vector2(620, 1), TopLeft);
-
-        // Caption
         Label(modal.transform, "TeamCaption", "NHÓM SINH VIÊN THỰC HIỆN:", new Vector2(24, -86), new Vector2(610, 24), 15, Muted, true);
 
-        // 3 Member Cards
-        string[,] members = new string[,]
+        string[,] members =
         {
             { "2312802", "Phan Khánh Vương", "Trưởng nhóm • Gameplay & Hệ thống" },
             { "2312585", "Phùng Nguyễn Hoài Bo", "Thành viên • Môi trường & Vật phẩm" },
             { "2312590", "Nguyễn Ngọc Trường Dân", "Thành viên • Enemy AI & Giao diện" }
         };
 
-        float startY = -114f;
-        float cardH = 54f;
-        float cardGap = 10f;
-
         for (int i = 0; i < 3; i++)
         {
-            float y = startY - i * (cardH + cardGap);
-            var card = SlicedImage(modal.transform, "Member" + (i + 1), spritePanelInset, new Color(0.18f, 0.15f, 0.12f, 0.9f), new Vector2(24, y), new Vector2(612, cardH), TopLeft, 0.5f);
-            
-            // Student ID badge
+            float y = -114f - i * 64f;
+            var card = SlicedImage(modal.transform, "Member" + (i + 1), spritePanelInset, new Color(0.18f, 0.15f, 0.12f, 0.9f), new Vector2(24, y), new Vector2(612, 54f), TopLeft, 0.5f);
             var badge = SlicedImage(card.transform, "IdBadge", spriteBtnPressed, new Color(0.25f, 0.2f, 0.15f, 1f), new Vector2(8, -8), new Vector2(130, 38), TopLeft, 0.5f);
             var idText = Label(badge.transform, "IdText", members[i, 0], Vector2.zero, new Vector2(130, 38), 16, Accent, true);
             idText.alignment = TextAlignmentOptions.Center;
-
-            // Student Name
             Label(card.transform, "NameText", members[i, 1], new Vector2(150, -8), new Vector2(450, 24), 18, White, true);
-            
-            // Role
             Label(card.transform, "RoleText", members[i, 2], new Vector2(150, -30), new Vector2(450, 20), 13, Mint);
         }
 
-        // University note
         var schoolText = Label(modal.transform, "SchoolNote", "Trường ĐH Khoa học Tự nhiên, ĐHQG-HCM", new Vector2(24, -310), new Vector2(612, 22), 14, Muted);
         schoolText.alignment = TextAlignmentOptions.Center;
-
-        // Close Button
-        ButtonAt(modal.transform, "CloseBtn", "ĐÓNG (ESC)", new Vector2(220, -348), new Vector2(220, 48), Accent, Ink, () => CloseAbout(), 20);
-
+        ButtonAt(modal.transform, "CloseBtn", "ĐÓNG (ESC)", new Vector2(220, -348), new Vector2(220, 48), Accent, Ink, CloseAbout, 20);
         aboutDialog.SetActive(false);
     }
 
-    private Slider CreatePixelSlider(Transform parent, string name, float min, float max, float initial, Vector2 position, Vector2 size, UnityEngine.Events.UnityAction<float> onValueChanged)
+    private Slider CreatePixelSlider(Transform parent, string name, float min, float max, float initial, Vector2 position, Vector2 size, UnityAction<float> onValueChanged)
     {
         var sliderGo = new GameObject(name, typeof(RectTransform), typeof(Slider));
         var r = (RectTransform)sliderGo.transform;
         r.SetParent(parent, false);
-        r.anchorMin = r.anchorMax = TopLeft;
-        r.pivot = TopLeft;
+        r.anchorMin = r.anchorMax = r.pivot = TopLeft;
         r.anchoredPosition = position;
         r.sizeDelta = size;
 
-        // Background
-        var bg = SlicedImage(sliderGo.transform, "Background", spriteProgressBg != null ? spriteProgressBg : whiteSprite, new Color(0.12f, 0.1f, 0.08f, 0.95f), Vector2.zero, size, TopLeft, 0.5f);
+        var bg = SlicedImage(sliderGo.transform, "Background", spriteProgressBg, new Color(0.12f, 0.1f, 0.08f, 0.95f), Vector2.zero, size, TopLeft, 0.5f);
         Stretch(bg.rectTransform);
 
-        // Fill Area
-        var fillArea = new GameObject("Fill Area", typeof(RectTransform));
-        var fillAreaRect = (RectTransform)fillArea.transform;
-        fillAreaRect.SetParent(sliderGo.transform, false);
-        fillAreaRect.anchorMin = Vector2.zero;
-        fillAreaRect.anchorMax = Vector2.one;
-        fillAreaRect.offsetMin = new Vector2(4, 4);
-        fillAreaRect.offsetMax = new Vector2(-4, -4);
+        var fillArea = new GameObject("Fill Area", typeof(RectTransform)).GetComponent<RectTransform>();
+        fillArea.SetParent(sliderGo.transform, false);
+        fillArea.anchorMin = Vector2.zero; fillArea.anchorMax = Vector2.one;
+        fillArea.offsetMin = new Vector2(4, 4); fillArea.offsetMax = new Vector2(-4, -4);
 
-        // Fill Image
-        var fill = SlicedImage(fillArea.transform, "Fill", spriteBarGreen != null ? spriteBarGreen : whiteSprite, Color.white, Vector2.zero, Vector2.zero, TopLeft, 0.5f);
+        var fill = SlicedImage(fillArea, "Fill", spriteBarGreen, Color.white, Vector2.zero, Vector2.zero, TopLeft, 0.5f);
         Stretch(fill.rectTransform);
 
-        // Handle Slide Area
-        var handleArea = new GameObject("Handle Slide Area", typeof(RectTransform));
-        var handleAreaRect = (RectTransform)handleArea.transform;
-        handleAreaRect.SetParent(sliderGo.transform, false);
-        handleAreaRect.anchorMin = Vector2.zero;
-        handleAreaRect.anchorMax = Vector2.one;
-        handleAreaRect.offsetMin = new Vector2(8, 0);
-        handleAreaRect.offsetMax = new Vector2(-8, 0);
+        var handleArea = new GameObject("Handle Slide Area", typeof(RectTransform)).GetComponent<RectTransform>();
+        handleArea.SetParent(sliderGo.transform, false);
+        handleArea.anchorMin = Vector2.zero; handleArea.anchorMax = Vector2.one;
+        handleArea.offsetMin = new Vector2(8, 0); handleArea.offsetMax = new Vector2(-8, 0);
 
-        // Handle Image
-        var handle = SlicedImage(handleArea.transform, "Handle", spriteBtnNormal != null ? spriteBtnNormal : whiteSprite, Color.white, Vector2.zero, new Vector2(16, size.y + 4), new Vector2(0.5f, 0.5f), 0.5f);
+        var handle = SlicedImage(handleArea, "Handle", spriteBtnNormal, Color.white, Vector2.zero, new Vector2(16, size.y + 4), new Vector2(0.5f, 0.5f), 0.5f);
         handle.raycastTarget = true;
 
         var slider = sliderGo.GetComponent<Slider>();
@@ -468,18 +355,8 @@ public class ContractUI : MonoBehaviour
         slider.fillRect = fill.rectTransform;
         slider.handleRect = handle.rectTransform;
         slider.direction = Slider.Direction.LeftToRight;
-        slider.minValue = min;
-        slider.maxValue = max;
-        slider.value = initial;
-
-        var colors = slider.colors;
-        colors.normalColor = Color.white;
-        colors.highlightedColor = new Color(1.2f, 1.2f, 1.2f);
-        colors.pressedColor = new Color(0.8f, 0.8f, 0.8f);
-        slider.colors = colors;
-
+        slider.minValue = min; slider.maxValue = max; slider.value = initial;
         slider.onValueChanged.AddListener(onValueChanged);
-
         return slider;
     }
 
@@ -494,7 +371,6 @@ public class ContractUI : MonoBehaviour
         var s = GameSettings.Instance;
         if (s == null) return;
 
-        // Sliders & texts
         if (masterSlider != null)
         {
             masterSlider.SetValueWithoutNotify(s.masterVolume);
@@ -508,57 +384,35 @@ public class ContractUI : MonoBehaviour
         if (sensSlider != null)
         {
             sensSlider.SetValueWithoutNotify(s.mouseSensitivity);
-            float mult = s.mouseSensitivity / 0.12f;
-            sensValText.text = mult.ToString("0.0") + "x (" + s.mouseSensitivity.ToString("0.00") + ")";
+            sensValText.text = (s.mouseSensitivity / 0.12f).ToString("0.0") + "x (" + s.mouseSensitivity.ToString("0.00") + ")";
         }
         if (fovSlider != null)
         {
             fovSlider.SetValueWithoutNotify(s.fieldOfView);
             fovValText.text = Mathf.RoundToInt(s.fieldOfView) + "°";
         }
-
         if (invertYText != null)
         {
             invertYText.text = s.invertY ? "BẬT (ĐẢO TRỤC)" : "TẮT (CHUẨN)";
             invertYText.color = s.invertY ? Ink : White;
             if (invertYBg != null) invertYBg.color = s.invertY ? Mint : Tile;
         }
-
         if (qualityText != null)
         {
             string qName = (QualitySettings.names != null && s.qualityLevel >= 0 && s.qualityLevel < QualitySettings.names.Length)
                 ? QualitySettings.names[s.qualityLevel].ToUpperInvariant() : "MẶC ĐỊNH";
             qualityText.text = "<  " + qName + "  >";
         }
+        if (fullscreenText != null) fullscreenText.text = s.fullscreen ? "TOÀN MÀN HÌNH" : "CỬA SỔ";
 
-        if (fullscreenText != null)
-        {
-            fullscreenText.text = s.fullscreen ? "TOÀN MÀN HÌNH" : "CỬA SỔ";
-        }
-
-        // Action buttons visibility
-        if (isPaused)
-        {
-            pauseHeaderBadge.text = "LƯỢT SĂN TẠM DỪNG  •  CÀI ĐẶT TRÒ CHƠI";
-            settingsResume.gameObject.SetActive(true);
-            settingsRetry.gameObject.SetActive(true);
-            settingsBoard.gameObject.SetActive(true);
-            settingsQuit.gameObject.SetActive(true);
-            settingsClose.gameObject.SetActive(false);
-            if (settingsAboutBoard != null) settingsAboutBoard.gameObject.SetActive(false);
-            if (settingsAboutPause != null) settingsAboutPause.gameObject.SetActive(true);
-        }
-        else
-        {
-            pauseHeaderBadge.text = "BẢNG CÀI ĐẶT TRÒ CHƠI  •  GUNQUEST";
-            settingsResume.gameObject.SetActive(false);
-            settingsRetry.gameObject.SetActive(false);
-            settingsBoard.gameObject.SetActive(false);
-            settingsQuit.gameObject.SetActive(false);
-            settingsClose.gameObject.SetActive(true);
-            if (settingsAboutBoard != null) settingsAboutBoard.gameObject.SetActive(true);
-            if (settingsAboutPause != null) settingsAboutPause.gameObject.SetActive(false);
-        }
+        pauseHeaderBadge.text = isPaused ? "LƯỢT SĂN TẠM DỪNG  •  CÀI ĐẶT TRÒ CHƠI" : "BẢNG CÀI ĐẶT TRÒ CHƠI  •  GUNQUEST";
+        settingsResume.gameObject.SetActive(isPaused);
+        settingsRetry.gameObject.SetActive(isPaused);
+        settingsBoard.gameObject.SetActive(isPaused);
+        settingsQuit.gameObject.SetActive(isPaused);
+        settingsClose.gameObject.SetActive(!isPaused);
+        if (settingsAboutBoard != null) settingsAboutBoard.gameObject.SetActive(!isPaused);
+        if (settingsAboutPause != null) settingsAboutPause.gameObject.SetActive(isPaused);
     }
 
     private void UpdateSetting(System.Action<GameSettings> update)
@@ -568,41 +422,31 @@ public class ContractUI : MonoBehaviour
         RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
     }
 
-    private void ChangeMasterVolume(float delta) => UpdateSetting(s => s.masterVolume = Mathf.Clamp01(Mathf.Round((s.masterVolume + delta) * 20f) / 20f));
     private void OnMasterSliderChanged(float val) => UpdateSetting(s => s.masterVolume = Mathf.Clamp01(val));
-    private void ChangeSfxVolume(float delta) => UpdateSetting(s => s.sfxVolume = Mathf.Clamp01(Mathf.Round((s.sfxVolume + delta) * 20f) / 20f));
     private void OnSfxSliderChanged(float val) => UpdateSetting(s => s.sfxVolume = Mathf.Clamp01(val));
-    private void ChangeSensitivity(float delta) => UpdateSetting(s => s.mouseSensitivity = Mathf.Clamp(Mathf.Round((s.mouseSensitivity + delta) * 100f) / 100f, 0.02f, 0.36f));
     private void OnSensitivitySliderChanged(float val) => UpdateSetting(s => s.mouseSensitivity = Mathf.Clamp(val, 0.02f, 0.36f));
     private void ToggleInvertY() => UpdateSetting(s => s.invertY = !s.invertY);
-    private void ChangeFOV(float delta) => UpdateSetting(s => s.fieldOfView = Mathf.Clamp(Mathf.Round(s.fieldOfView + delta), 60f, 105f));
     private void OnFOVSliderChanged(float val) => UpdateSetting(s => s.fieldOfView = Mathf.Clamp(val, 60f, 105f));
     private void CycleQuality() => UpdateSetting(s => { if (QualitySettings.names.Length > 0) s.qualityLevel = (s.qualityLevel + 1) % QualitySettings.names.Length; });
     private void ToggleFullscreen() => UpdateSetting(s => s.fullscreen = !s.fullscreen);
     private void ResetSettingsToDefaults() => UpdateSetting(s => s.ResetDefaults());
 
-        private void SelectMap(int index)
+    private void SelectMap(int index)
     {
         selectedMapIndex = index;
-        lastSelectedMap = -1; // force refresh
+        lastSelectedMap = -1;
         Refresh();
     }
 
     public void OnStartButtonClicked()
     {
         string curScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-        bool isCurrent = (selectedMapIndex == 0 && curScene == "AutumnValley")
-                      || (selectedMapIndex == 1 && curScene == "IceboundPass");
-
-        if (isCurrent)
-        {
-            game.AcceptContract();
-        }
+        bool isCurrent = (selectedMapIndex == 0 && curScene == "AutumnValley") || (selectedMapIndex == 1 && curScene == "IceboundPass");
+        if (isCurrent) game.AcceptContract();
         else
         {
-            string targetScene = selectedMapIndex == 0 ? "AutumnValley" : "IceboundPass";
             Time.timeScale = 1;
-            UnityEngine.SceneManagement.SceneManager.LoadScene(targetScene);
+            UnityEngine.SceneManagement.SceneManager.LoadScene(selectedMapIndex == 0 ? "AutumnValley" : "IceboundPass");
         }
     }
 
@@ -629,10 +473,7 @@ public class ContractUI : MonoBehaviour
         var button = ButtonAt(parent, name, "", new Vector2(24, y), new Vector2(348, 72), Tile, White, onBuy, 18);
         Object.Destroy(button.GetComponentInChildren<TMP_Text>().gameObject);
         SlicedImage(button.transform, "InnerInset", spritePanelInset, new Color(0.12f, 0.1f, 0.08f, 0.6f), new Vector2(4, -4), new Vector2(340, 64), TopLeft, 0.5f);
-        if (icon != null)
-        {
-            IconImage(button.transform, "ItemIcon", icon, Color.white, new Vector2(10, -12), new Vector2(44, 44), TopLeft);
-        }
+        if (icon != null) IconImage(button.transform, "ItemIcon", icon, Color.white, new Vector2(10, -12), new Vector2(44, 44), TopLeft);
         Label(button.transform, "ItemTitle", title, new Vector2(62, -8), new Vector2(275, 22), 15, Mint, true);
         countText = Label(button.transform, "ItemCount", "", new Vector2(62, -28), new Vector2(275, 20), 14, White, false);
         priceText = Label(button.transform, "ItemPrice", "", new Vector2(62, -47), new Vector2(275, 20), 14, Accent, false);
@@ -656,7 +497,6 @@ public class ContractUI : MonoBehaviour
         var damageOverlay = Image(hud.transform, "DamageOverlay", new Color(.6f, 0, 0, 0), Vector2.zero, Vector2.zero, Vector2.zero);
         Stretch(damageOverlay.rectTransform);
 
-        // 1. Objective Panel (Top-Left)
         objectivePanel = SlicedImage(hud.transform, "ObjectivePanel", spritePanel, Color.white, new Vector2(28, -28), new Vector2(490, 136), TopLeft, 0.5f).rectTransform;
         IconImage(objectivePanel, "ObjectiveIcon", spriteStar != null ? spriteStar : spriteInfo, Accent, new Vector2(16, -13), new Vector2(20, 20), TopLeft);
         Label(objectivePanel, "ObjectiveCaption", "NHIỆM VỤ", new Vector2(42, -14), new Vector2(410, 22), 15, Mint, true);
@@ -665,34 +505,30 @@ public class ContractUI : MonoBehaviour
         objectiveTitle.enableAutoSizing = true; objectiveTitle.fontSizeMin = 18; objectiveTitle.fontSizeMax = 23;
         objectiveBody = Label(objectivePanel, "ObjectiveDetail", "", new Vector2(24, -77), new Vector2(442, 42), 16, new Color(0.9f, 0.88f, 0.82f));
 
-        // 2. HUD Wallet Panel & Coin Popup (Top-Right)
         hudWalletPanel = SlicedImage(hud.transform, "HUDWallet", spritePanel, Color.white, new Vector2(-228, -28), new Vector2(200, 50), new Vector2(1, 1), 0.5f).rectTransform;
-        IconImage(hudWalletPanel, "CoinIcon", spriteCoin != null ? spriteCoin : spriteStar, Color.white, new Vector2(12, -13), new Vector2(24, 24), TopLeft);
+        IconImage(hudWalletPanel, "CoinIcon", spriteCoin, Color.white, new Vector2(12, -13), new Vector2(24, 24), TopLeft);
         hudWalletValue = Label(hudWalletPanel, "Credits", "0 xu", new Vector2(42, -11), new Vector2(146, 28), 20, Accent, true);
 
         hudCoinPopup = Label(hud.transform, "CoinPopup", "+10 xu", new Vector2(-228, -82), new Vector2(200, 30), 22, Mint, true);
         hudCoinPopup.alignment = TextAlignmentOptions.Right;
         hudCoinPopup.gameObject.SetActive(false);
 
-        // Extraction Panel (Top-Right, positioned below HUD Wallet)
         exitPanel = SlicedImage(hud.transform, "ExtractionDistance", spritePanel, Color.white, new Vector2(-228, -84), new Vector2(200, 50), new Vector2(1, 1), 0.5f).rectTransform;
-        IconImage(exitPanel, "ExitIcon", spriteCoin != null ? spriteCoin : spriteStar, Color.white, new Vector2(12, -13), new Vector2(24, 24), TopLeft);
+        IconImage(exitPanel, "ExitIcon", spriteCoin, Color.white, new Vector2(12, -13), new Vector2(24, 24), TopLeft);
         exitText = Label(exitPanel, "ExtractionPrompt", "", new Vector2(42, -11), new Vector2(146, 28), 18, Mint, true);
 
-        // Shop / Board Prompt (Top-Right, below Extraction)
         var boardHintPanel = SlicedImage(hud.transform, "BoardHintPanel", spritePanel, Color.white, new Vector2(-228, -140), new Vector2(200, 36), new Vector2(1, 1), 0.5f).rectTransform;
         var hintLbl = Label(boardHintPanel, "BoardHint", "[ENTER] TIỆM ĐỒ", new Vector2(10, -6), new Vector2(180, 24), 14, Accent, true);
         hintLbl.alignment = TextAlignmentOptions.Center;
 
-        // 3. Health Panel (Bottom-Left)
         healthPanel = SlicedImage(hud.transform, "HealthPanel", spritePanel, Color.white, new Vector2(28, 134), new Vector2(270, 114), Vector2.zero, 0.5f).rectTransform;
         IconImage(healthPanel, "HeartIcon", spriteHeart, Color.white, new Vector2(16, -14), new Vector2(22, 22), TopLeft);
         Label(healthPanel, "HealthCaption", "SINH LỰC", new Vector2(44, -16), new Vector2(200, 22), 15, Accent, true);
         healthValue = Label(healthPanel, "HealthValue", "", new Vector2(20, -40), new Vector2(230, 36), 28, White, true);
 
-        SlicedImage(healthPanel, "HealthTrack", spriteProgressBg != null ? spriteProgressBg : whiteSprite, new Color(0.15f, 0.11f, 0.09f, 1f), new Vector2(14, -78), new Vector2(242, 22), TopLeft, 0.5f);
-        healthChip = SlicedImage(healthPanel, "HealthChip", spriteBarFillGold != null ? spriteBarFillGold : whiteSprite, Color.white, new Vector2(16, -80), new Vector2(238, 18), TopLeft, 0.5f);
-        healthFill = SlicedImage(healthPanel, "HealthFill", spriteBarFillRed != null ? spriteBarFillRed : whiteSprite, Color.white, new Vector2(16, -80), new Vector2(238, 18), TopLeft, 0.5f);
+        SlicedImage(healthPanel, "HealthTrack", spriteProgressBg, new Color(0.15f, 0.11f, 0.09f, 1f), new Vector2(14, -78), new Vector2(242, 22), TopLeft, 0.5f);
+        healthChip = SlicedImage(healthPanel, "HealthChip", spriteBarFillGold, Color.white, new Vector2(16, -80), new Vector2(238, 18), TopLeft, 0.5f);
+        healthFill = SlicedImage(healthPanel, "HealthFill", spriteBarFillRed, Color.white, new Vector2(16, -80), new Vector2(238, 18), TopLeft, 0.5f);
         foreach (var bar in new[] { healthChip, healthFill })
         {
             bar.type = UIImage.Type.Filled;
@@ -707,7 +543,6 @@ public class ContractUI : MonoBehaviour
             health.overlay = damageOverlay;
         }
 
-        // 4. Ammo Panel (Bottom-Right)
         ammoPanel = SlicedImage(hud.transform, "AmmoPanel", spritePanel, Color.white, new Vector2(-298, 154), new Vector2(270, 126), new Vector2(1, 0), 0.5f).rectTransform;
         weaponName = Label(ammoPanel, "WeaponName", "", new Vector2(18, -14), new Vector2(234, 26), 18, Accent, true);
         SlicedImage(ammoPanel, "AmmoPlate", spritePanelInset, new Color(0.12f, 0.1f, 0.08f, 0.72f), new Vector2(14, -40), new Vector2(242, 52), TopLeft, 0.5f);
@@ -715,44 +550,28 @@ public class ContractUI : MonoBehaviour
         reserveValue = Label(ammoPanel, "ReserveAmmo", "", new Vector2(136, -55), new Vector2(110, 30), 22, new Color(0.85f, 0.85f, 0.8f));
         ammoHint = Label(ammoPanel, "AmmoHint", "", new Vector2(18, -98), new Vector2(234, 22), 16, Mint, true);
 
-        // 5. Weapon Inventory Bar (Bottom-Center)
         int count = weapons != null ? weapons.Count : 4;
-        slotTiles = new Image[count];
-        slotMarks = new Image[count];
-        slotNumbers = new TMP_Text[count];
-        slotCounts = new TMP_Text[count];
-        slotIcons = new Image[count];
+        slotTiles = new Image[count]; slotMarks = new Image[count]; slotIcons = new Image[count];
+        slotNumbers = new TMP_Text[count]; slotCounts = new TMP_Text[count];
 
-        float slotSize = 68f;
-        float slotSpacing = 8f;
-        float innerWidth = count * slotSize + (count - 1) * slotSpacing;
-        float windowWidth = innerWidth + 28f;
-        float windowHeight = 108f;
-
-        slotStrip = SlicedImage(hud.transform, "WeaponInventoryWindow", spriteWindow != null ? spriteWindow : spritePanel, Color.white, new Vector2(-windowWidth * .5f, 136), new Vector2(windowWidth, windowHeight), new Vector2(.5f, 0), 0.5f).rectTransform;
+        float slotSize = 68f, slotSpacing = 8f;
+        float windowWidth = count * slotSize + (count - 1) * slotSpacing + 28f;
+        slotStrip = SlicedImage(hud.transform, "WeaponInventoryWindow", spriteWindow != null ? spriteWindow : spritePanel, Color.white, new Vector2(-windowWidth * .5f, 136), new Vector2(windowWidth, 108f), new Vector2(.5f, 0), 0.5f).rectTransform;
 
         hotbarTitle = Label(slotStrip, "InventoryTitle", "INVENTORY", new Vector2(0, -3), new Vector2(windowWidth, 20), 14, Ink, true);
         hotbarTitle.alignment = TextAlignmentOptions.Center;
 
-        float startX = 14f;
-        float slotY = -28f;
         for (int i = 0; i < count; i++)
         {
-            float x = startX + i * (slotSize + slotSpacing);
-            slotTiles[i] = SlicedImage(slotStrip, "Slot" + (i + 1), spritePanelInset, Color.white, new Vector2(x, slotY), new Vector2(slotSize, slotSize), TopLeft, 0.5f);
-
-            Sprite icon = GetWeaponIcon(i);
-            slotIcons[i] = IconImage(slotTiles[i].transform, "Icon", icon, Color.white, new Vector2(12, -12), new Vector2(44, 44), TopLeft);
-
+            float x = 14f + i * (slotSize + slotSpacing);
+            slotTiles[i] = SlicedImage(slotStrip, "Slot" + (i + 1), spritePanelInset, Color.white, new Vector2(x, -28f), new Vector2(slotSize, slotSize), TopLeft, 0.5f);
+            slotIcons[i] = IconImage(slotTiles[i].transform, "Icon", GetWeaponIcon(i), Color.white, new Vector2(12, -12), new Vector2(44, 44), TopLeft);
             slotNumbers[i] = Label(slotTiles[i].transform, "Key", (i + 1).ToString(), new Vector2(4, -3), new Vector2(18, 18), 12, new Color(0.95f, 0.88f, 0.72f), true);
-
             slotCounts[i] = Label(slotTiles[i].transform, "Count", "", new Vector2(18, -48), new Vector2(46, 16), 11, Accent, true);
             slotCounts[i].alignment = TextAlignmentOptions.Right;
-
             slotMarks[i] = SlicedImage(slotTiles[i].transform, "Selected", spriteFocus != null ? spriteFocus : spriteBtnPressed, new Color(1f, 0.85f, 0.4f, 1f), new Vector2(-3, 3), new Vector2(slotSize + 6, slotSize + 6), TopLeft, 0.5f);
         }
 
-        // 6. Crosshair (Center)
         var crosshair = Rect("Crosshair", hud.transform, new Vector2(-16, 16), new Vector2(32, 32), Vector2.one * .5f);
         Image(crosshair, "DotOutline", Ink, new Vector2(14, -14), new Vector2(4, 4), TopLeft);
         Image(crosshair, "Dot", White, new Vector2(15, -15), new Vector2(2, 2), TopLeft);
@@ -765,19 +584,14 @@ public class ContractUI : MonoBehaviour
     private void Update()
     {
         if (game != null && canvas != null) Refresh();
-        if (coinPopupTimer > 0f)
+        if (coinPopupTimer <= 0f) return;
+        coinPopupTimer -= Time.deltaTime;
+        if (hudCoinPopup == null) return;
+        hudCoinPopup.color = new Color(Accent.r, Accent.g, Accent.b, Mathf.Clamp01(coinPopupTimer / 0.4f));
+        if (coinPopupTimer <= 0f)
         {
-            coinPopupTimer -= Time.deltaTime;
-            if (hudCoinPopup != null)
-            {
-                float alpha = Mathf.Clamp01(coinPopupTimer / 0.4f);
-                hudCoinPopup.color = new Color(Accent.r, Accent.g, Accent.b, alpha);
-                if (coinPopupTimer <= 0f)
-                {
-                    hudCoinPopup.gameObject.SetActive(false);
-                    pendingPopupAmount = 0;
-                }
-            }
+            hudCoinPopup.gameObject.SetActive(false);
+            pendingPopupAmount = 0;
         }
     }
 
@@ -792,20 +606,16 @@ public class ContractUI : MonoBehaviour
             hudCoinPopup.color = Accent;
         }
         if (hudWalletValue != null && game != null && game.Progress != null)
-        {
             hudWalletValue.text = game.Progress.credits.ToString("N0") + " <size=14>xu</size>";
-        }
     }
 
     private void OnStatusMessage(string message, Color color)
     {
         coinPopupTimer = 1.8f;
-        if (hudCoinPopup != null)
-        {
-            hudCoinPopup.gameObject.SetActive(true);
-            hudCoinPopup.text = message;
-            hudCoinPopup.color = color;
-        }
+        if (hudCoinPopup == null) return;
+        hudCoinPopup.gameObject.SetActive(true);
+        hudCoinPopup.text = message;
+        hudCoinPopup.color = color;
     }
 
     public void Refresh()
@@ -814,15 +624,8 @@ public class ContractUI : MonoBehaviour
         FitLayout();
         hud.SetActive(game.IsPlaying);
         menu.SetActive(!game.IsPlaying);
-        if (game.IsPlaying)
-        {
-            boardSettingsOpen = false;
-            RefreshHUD();
-        }
-        else
-        {
-            RefreshMenu();
-        }
+        if (game.IsPlaying) { boardSettingsOpen = false; RefreshHUD(); }
+        else RefreshMenu();
     }
 
     private void FitLayout()
@@ -852,9 +655,7 @@ public class ContractUI : MonoBehaviour
     private void RefreshHUD()
     {
         if (hudWalletValue != null && game != null && game.Progress != null)
-        {
             hudWalletValue.text = game.Progress.credits.ToString("N0") + " <size=14>xu</size>";
-        }
 
         if (health != null)
         {
@@ -873,23 +674,13 @@ public class ContractUI : MonoBehaviour
         var kind = weapons.CurrentKind;
         if (kind == SlotKind.Melee)
         {
-            ammoValue.text = "—";
-            reserveValue.text = "";
-            ammoHint.text = "CẬN CHIẾN";
-            ammoValue.color = White;
+            ammoValue.text = "—"; reserveValue.text = ""; ammoHint.text = "CẬN CHIẾN"; ammoValue.color = White;
         }
-        else if (kind == SlotKind.Consumable)
+        else if (kind == SlotKind.Consumable || kind == SlotKind.Throwable)
         {
             ammoValue.text = weapon.count.ToString();
             reserveValue.text = "/ " + weapon.maxCount;
-            ammoHint.text = "[CHUỘT TRÁI]  HỒI 50 HP";
-            ammoValue.color = weapon.count <= 1 ? Accent : White;
-        }
-        else if (kind == SlotKind.Throwable)
-        {
-            ammoValue.text = weapon.count.ToString();
-            reserveValue.text = "/ " + weapon.maxCount;
-            ammoHint.text = "[CHUỘT TRÁI]  NÉM BOM (SÁT THƯƠNG AOE)";
+            ammoHint.text = kind == SlotKind.Consumable ? "[CHUỘT TRÁI]  HỒI 50 HP" : "[CHUỘT TRÁI]  NÉM BOM (SÁT THƯƠNG AOE)";
             ammoValue.color = weapon.count <= 1 ? Accent : White;
         }
         else
@@ -900,20 +691,14 @@ public class ContractUI : MonoBehaviour
             ammoValue.color = !weapons.IsReloading && weapons.Ammo <= 3 ? Accent : White;
         }
 
-        if (hotbarTitle != null) hotbarTitle.text = "INVENTORY";
-
         for (int i = 0; i < slotTiles.Length; i++)
         {
             bool selected = i == weapons.SelectedIndex;
             slotTiles[i].color = selected ? Color.white : new Color(0.72f, 0.68f, 0.64f, 0.95f);
             if (slotIcons != null && i < slotIcons.Length && slotIcons[i] != null)
-            {
                 slotIcons[i].color = selected ? Color.white : new Color(0.75f, 0.75f, 0.75f, 0.85f);
-            }
             if (slotNumbers != null && i < slotNumbers.Length && slotNumbers[i] != null)
-            {
                 slotNumbers[i].color = selected ? Accent : new Color(0.85f, 0.8f, 0.7f);
-            }
             if (slotCounts != null && i < slotCounts.Length && slotCounts[i] != null)
             {
                 var k = weapons.GetKind(i);
@@ -923,15 +708,10 @@ public class ContractUI : MonoBehaviour
                     slotCounts[i].text = "x" + c;
                     slotCounts[i].color = c > 0 ? (selected ? Accent : Color.white) : new Color(0.8f, 0.3f, 0.3f);
                 }
-                else
-                {
-                    slotCounts[i].text = "";
-                }
+                else slotCounts[i].text = "";
             }
             if (slotMarks != null && i < slotMarks.Length && slotMarks[i] != null)
-            {
                 slotMarks[i].gameObject.SetActive(selected);
-            }
         }
     }
 
@@ -943,16 +723,10 @@ public class ContractUI : MonoBehaviour
             if (label.Contains("pistol") || label.Contains("lục")) return spriteIconPistol;
             if (label.Contains("rifle") || label.Contains("trường") || label.Contains("súng")) return spriteIconRifle;
             if (label.Contains("bat") || label.Contains("gậy")) return spriteIconBat;
-            if (label.Contains("shovel") || label.Contains("xẻng")) return spriteIconShovel;
             if (label.Contains("potion") || label.Contains("máu") || label.Contains("bình") || label.Contains("heal")) return spriteIconPotion;
             if (label.Contains("bomb") || label.Contains("bom") || label.Contains("lựu đạn") || label.Contains("grenade")) return spriteIconBomb;
         }
-        if (index == 0) return spriteIconPistol;
-        if (index == 1) return spriteIconRifle;
-        if (index == 2) return spriteIconBat;
-        if (index == 3) return spriteIconPotion;
-        if (index == 4) return spriteIconBomb;
-        return spriteSword != null ? spriteSword : whiteSprite;
+        return index switch { 0 => spriteIconPistol, 1 => spriteIconRifle, 2 => spriteIconBat, 3 => spriteIconPotion, _ => spriteIconBomb };
     }
 
     private void RefreshMenu()
@@ -961,7 +735,6 @@ public class ContractUI : MonoBehaviour
         bool isBoard = state == ContractGame.Phase.Board;
         bool isPaused = state == ContractGame.Phase.Paused;
         bool won = state == ContractGame.Phase.Won;
-
         bool showSettings = isPaused || boardSettingsOpen;
 
         if (settingsPanel != null) settingsPanel.SetActive(showSettings);
@@ -972,11 +745,7 @@ public class ContractUI : MonoBehaviour
         wallet.text = p.credits.ToString("N0") + " <size=18>xu</size>";
         completed.text = "ĐÃ HOÀN THÀNH  " + p.completedContracts;
 
-        if (showSettings)
-        {
-            RefreshSettingsUI(isPaused);
-            return;
-        }
+        if (showSettings) { RefreshSettingsUI(isPaused); return; }
 
         int curPotion = weapons != null ? weapons.PotionCount : p.healthPotionCount;
         int curGrenade = weapons != null ? weapons.GrenadeCount : p.grenadeCount;
@@ -1006,27 +775,20 @@ public class ContractUI : MonoBehaviour
             {
                 string nextName = !string.IsNullOrEmpty(game.NextSceneName) ? "ĐÈO BĂNG (ICEBOUND PASS)" : "MÀN TIẾP THEO";
                 int secs = Mathf.CeilToInt(game.TransitionRemainingTime);
-                if (secs > 0)
-                    retryTxt.text = "QUA MÀN: " + nextName + " (" + secs + "s)   →  [ENTER]";
-                else
-                    retryTxt.text = "QUA MÀN: " + nextName + "   →  [ENTER]";
+                retryTxt.text = secs > 0 ? $"QUA MÀN: {nextName} ({secs}s)   →  [ENTER]" : $"QUA MÀN: {nextName}   →  [ENTER]";
             }
-            else
-            {
-                retryTxt.text = "CHƠI LẠI NHIỆM VỤ NÀY   →  [ENTER]";
-            }
+            else retryTxt.text = "CHƠI LẠI NHIỆM VỤ NÀY   →  [ENTER]";
         }
-        pausedRetry.gameObject.SetActive(isPaused); if (board != null) ((RectTransform)board.transform).anchoredPosition = new Vector2(24, isPaused ? -255 : -195);
+        pausedRetry.gameObject.SetActive(isPaused);
+        if (board != null) ((RectTransform)board.transform).anchoredPosition = new Vector2(24, isPaused ? -255 : -195);
         shop.SetActive(isBoard);
         summary.SetActive(!isBoard);
-
         if (map1Btn != null) map1Btn.gameObject.SetActive(isBoard);
         if (map2Btn != null) map2Btn.gameObject.SetActive(isBoard);
 
         if (isBoard)
         {
             eyebrow.text = game.IsContractStarted ? "ĐANG SĂN QUÁI  /  CỬA HÀNG TIẾP TẾ" : "CHỌN MAP  •  BẢN ĐỒ CHIẾN DỊCH";
-
             bool isMap1 = selectedMapIndex == 0;
             string curScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             bool isCurrent = (isMap1 && curScene == "AutumnValley") || (!isMap1 && curScene == "IceboundPass");
@@ -1070,39 +832,33 @@ public class ContractUI : MonoBehaviour
             var startTxt = start.GetComponentInChildren<TMP_Text>();
             if (startTxt != null)
             {
-                if (isCurrent)
-                {
-                    startTxt.text = game.IsContractStarted ? "TIẾP TỤC TRẬN ĐẤU   →  [ENTER]" : "VÀO TRẬN: " + (isMap1 ? "THUNG LŨNG LÁ ĐỎ" : "ĐÈO BĂNG GIÁ") + "   →  [ENTER]";
-                }
-                else
-                {
-                    startTxt.text = "CHUYỂN SANG MAP: " + (isMap1 ? "THUNG LŨNG LÁ ĐỎ" : "ĐÈO BĂNG GIÁ") + "   →  [ENTER]";
-                }
+                string mapLabel = isMap1 ? "THUNG LŨNG LÁ ĐỎ" : "ĐÈO BĂNG GIÁ";
+                startTxt.text = isCurrent
+                    ? (game.IsContractStarted ? "TIẾP TỤC TRẬN ĐẤU   →  [ENTER]" : $"VÀO TRẬN: {mapLabel}   →  [ENTER]")
+                    : $"CHUYỂN SANG MAP: {mapLabel}   →  [ENTER]";
             }
         }
         else
         {
             eyebrow.text = isPaused ? "LƯỢT SĂN ĐANG TẠM DỪNG" : won ? "NHIỆM VỤ THÀNH CÔNG" : "NHIỆM VỤ KHÔNG HOÀN THÀNH";
             missionTitle.text = isPaused ? "TẠM DỪNG" : won ? "NHIỆM VỤ HOÀN TẤT" : "LƯỢT SĂN KẾT THÚC";
-            briefing.text = isPaused ?
-                game.MissionTitle + "\nTiếp tục khi bạn đã sẵn sàng. Lượt săn và quá trình nạp đạn đang tạm dừng." :
-                won ? ("Mục tiêu đã bị tiêu diệt và bạn đã rút lui an toàn!\nĐang chuẩn bị tiến vào " + (!string.IsNullOrEmpty(game.NextSceneName) ? "ĐÈO BĂNG GIÁ (Icebound Pass)" : "màn tiếp theo") + ".\nNhấn [ENTER] hoặc bấm nút bên dưới để chuyển màn ngay.") :
-                (string.IsNullOrEmpty(game.FailureReason) ? "Bạn đã bị hạ. Chuẩn bị lại trang bị và thử sức một lần nữa." : game.FailureReason);
+            briefing.text = isPaused
+                ? game.MissionTitle + "\nTiếp tục khi bạn đã sẵn sàng. Lượt săn và quá trình nạp đạn đang tạm dừng."
+                : won
+                    ? "Mục tiêu đã bị tiêu diệt và bạn đã rút lui an toàn!\nĐang chuẩn bị tiến vào " + (!string.IsNullOrEmpty(game.NextSceneName) ? "ĐÈO BĂNG GIÁ (Icebound Pass)" : "màn tiếp theo") + ".\nNhấn [ENTER] hoặc bấm nút bên dưới để chuyển màn ngay."
+                    : (string.IsNullOrEmpty(game.FailureReason) ? "Bạn đã bị hạ. Chuẩn bị lại trang bị và thử sức một lần nữa." : game.FailureReason);
             missionStripe.color = won ? Mint : (!isBoard && !isPaused ? Danger : Accent);
             rewardCaption.text = won ? "PHẦN THƯỞNG ĐÃ LƯU" : !isBoard && !isPaused ? "PHẦN THƯỞNG NHẬN ĐƯỢC" : "THƯỞNG HOÀN THÀNH";
             rewardValue.text = (!isBoard && !isPaused && !won ? "0" : game.Reward.ToString()) + " <size=22>xu</size>";
-            rewardHint.text = won ? "Rút lui thành công.\nTiến vào Icebound Pass." : !isBoard && !isPaused ?
-                "Chết sẽ không nhận thưởng.\nBạn có thể thử lại nhiệm vụ." : "Hạ mục tiêu. Rút lui an toàn.\nThưởng chỉ được nhận khi trở về.";
+            rewardHint.text = won ? "Rút lui thành công.\nTiến vào Icebound Pass." : !isBoard && !isPaused
+                ? "Chết sẽ không nhận thưởng.\nBạn có thể thử lại nhiệm vụ." : "Hạ mục tiêu. Rút lui an toàn.\nThưởng chỉ được nhận khi trở về.";
         }
-        if (sideTitle != null) sideTitle.text = isBoard ? (showingSuppliesTab ? "CỬA HÀNG VẬT PHẨM" : "NÂNG CẤP TRANG BỊ") : "THÔNG TIN LƯỢT SĂN";
         currentGear.text = "ĐANG DÙNG  +" + p.damageLevel * 10 + "% sát thương\nBăng đạn Lv." + p.magazineLevel;
         summaryMission.text = game.MissionTitle;
         summaryGear.text = "Sát thương +" + p.damageLevel * 10 + "%   •   Băng đạn Lv." + p.magazineLevel;
         Offer(true, damageUpgrade, damageValue, damagePrice);
         Offer(false, magazineUpgrade, magazineValue, magazinePrice);
         RefreshShopSupplies();
-
-// startTxt handled in isBoard block above
     }
 
     private void RefreshSupplyItem(Button btn, TMP_Text countText, TMP_Text priceText, int current, int max, int cost, string prefix)
@@ -1137,12 +893,9 @@ public class ContractUI : MonoBehaviour
 
     private static void EnsureUIInput()
     {
-        var events = EventSystem.current;
-        if (events == null) events = Object.FindFirstObjectByType<EventSystem>();
-        if (events == null) events = new GameObject("ContractEventSystem", typeof(EventSystem)).GetComponent<EventSystem>();
+        var events = EventSystem.current ?? Object.FindFirstObjectByType<EventSystem>() ?? new GameObject("ContractEventSystem", typeof(EventSystem)).GetComponent<EventSystem>();
         events.enabled = true;
-        var module = events.GetComponent<InputSystemUIInputModule>();
-        if (module == null) module = events.gameObject.AddComponent<InputSystemUIInputModule>();
+        var module = events.GetComponent<InputSystemUIInputModule>() ?? events.gameObject.AddComponent<InputSystemUIInputModule>();
         foreach (var other in events.GetComponents<BaseInputModule>()) if (other != module) other.enabled = false;
         module.enabled = true;
         if (module.point == null || module.point.action == null || module.leftClick == null || module.leftClick.action == null) module.AssignDefaultActions();
@@ -1152,23 +905,20 @@ public class ContractUI : MonoBehaviour
     {
         var go = new GameObject(name, typeof(RectTransform)); go.transform.SetParent(parent, false); Stretch((RectTransform)go.transform); return go;
     }
-    private static void Stretch(RectTransform r)
-    {
-        r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = r.offsetMax = Vector2.zero;
-    }
+    private static void Stretch(RectTransform r) { r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = r.offsetMax = Vector2.zero; }
     private static RectTransform Rect(string name, Transform parent, Vector2 position, Vector2 size, Vector2 anchor)
     {
-        var go = new GameObject(name, typeof(RectTransform)); var r = (RectTransform)go.transform;
+        var r = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
         r.SetParent(parent, false); r.anchorMin = r.anchorMax = anchor; r.pivot = TopLeft; r.anchoredPosition = position; r.sizeDelta = size; return r;
     }
     private Image Image(Transform parent, string name, Color color, Vector2 position, Vector2 size, Vector2 anchor)
     {
-        var r = Rect(name, parent, position, size, anchor); var image = r.gameObject.AddComponent<Image>();
+        var image = Rect(name, parent, position, size, anchor).gameObject.AddComponent<Image>();
         image.sprite = whiteSprite; image.color = color; image.raycastTarget = false; return image;
     }
     private Image SlicedImage(Transform parent, string name, Sprite sprite, Color color, Vector2 position, Vector2 size, Vector2 anchor, float ppuMultiplier = 0.5f)
     {
-        var r = Rect(name, parent, position, size, anchor); var image = r.gameObject.AddComponent<UIImage>();
+        var image = Rect(name, parent, position, size, anchor).gameObject.AddComponent<UIImage>();
         image.sprite = sprite != null ? sprite : whiteSprite;
         image.type = sprite != null ? UIImage.Type.Sliced : UIImage.Type.Simple;
         image.pixelsPerUnitMultiplier = ppuMultiplier;
@@ -1176,23 +926,22 @@ public class ContractUI : MonoBehaviour
     }
     private Image IconImage(Transform parent, string name, Sprite sprite, Color color, Vector2 position, Vector2 size, Vector2 anchor)
     {
-        var r = Rect(name, parent, position, size, anchor); var image = r.gameObject.AddComponent<UIImage>();
+        var image = Rect(name, parent, position, size, anchor).gameObject.AddComponent<UIImage>();
         image.sprite = sprite != null ? sprite : whiteSprite;
-        image.type = UIImage.Type.Simple;
-        image.preserveAspect = true;
+        image.type = UIImage.Type.Simple; image.preserveAspect = true;
         image.color = color; image.raycastTarget = false; return image;
     }
     private TMP_Text Label(Transform parent, string name, string value, Vector2 position, Vector2 size, int fontSize, Color color, bool bold = false)
     {
-        var r = Rect(name, parent, position, size, TopLeft); var text = r.gameObject.AddComponent<TextMeshProUGUI>();
+        var text = Rect(name, parent, position, size, TopLeft).gameObject.AddComponent<TextMeshProUGUI>();
         text.font = font; text.fontSize = fontSize; text.color = color; text.text = value;
         text.fontStyle = bold ? FontStyles.Bold : FontStyles.Normal;
         text.raycastTarget = false; text.overflowMode = TextOverflowModes.Ellipsis;
         text.alignment = TextAlignmentOptions.TopLeft; text.extraPadding = true; return text;
     }
-    private Button ButtonAt(Transform parent, string name, string label, Vector2 position, Vector2 size, Color color, Color textColor, UnityEngine.Events.UnityAction action, int fontSize)
+    private Button ButtonAt(Transform parent, string name, string label, Vector2 position, Vector2 size, Color color, Color textColor, UnityAction action, int fontSize)
     {
-        var image = SlicedImage(parent, name, spriteBtnNormal != null ? spriteBtnNormal : whiteSprite, color, position, size, TopLeft, 0.5f);
+        var image = SlicedImage(parent, name, spriteBtnNormal, color, position, size, TopLeft, 0.5f);
         image.raycastTarget = true;
         var button = image.gameObject.AddComponent<Button>(); button.targetGraphic = image;
         var colors = button.colors; colors.normalColor = Color.white; colors.highlightedColor = new Color(1.15f, 1.15f, 1.15f);

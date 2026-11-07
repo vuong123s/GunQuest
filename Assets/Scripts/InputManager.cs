@@ -11,7 +11,6 @@ public class InputManager : MonoBehaviour
     private InputActions.OnFootActions onFoot;
     private PlayerMotor motor;
     private PlayerLook look;
-    private PlayerInteract interact;
     private PlayerMelee melee;
     private PlayerWeapons weapons;
     private PlayerHealth health;
@@ -31,7 +30,6 @@ public class InputManager : MonoBehaviour
 
         motor = GetComponent<PlayerMotor>();
         look = GetComponentInChildren<PlayerLook>();
-        interact = GetComponentInChildren<PlayerInteract>();
         melee = GetComponent<PlayerMelee>();
         weapons = GetComponent<PlayerWeapons>();
         health = GetComponent<PlayerHealth>();
@@ -40,7 +38,6 @@ public class InputManager : MonoBehaviour
         onFoot.Crouch.performed += _ => { if (CanAct) motor.Crouch(); };
         onFoot.Sprint.started += _ => { if (CanAct) motor.SetSprinting(true); };
         onFoot.Sprint.canceled += _ => motor.SetSprinting(false);
-        onFoot.Interact.performed += _ => { if (CanAct) interact?.ProcessInteract(); };
         onFoot.Melee.performed += _ =>
         {
             if (!CanAct) return;
@@ -62,13 +59,7 @@ public class InputManager : MonoBehaviour
         if (keyboard != null)
         {
             for (int i = 0; i < SlotKeys.Length; i++)
-            {
-                if (keyboard[SlotKeys[i]].wasPressedThisFrame && weapons.Equip(i))
-                {
-                    SetFiring(false);
-                    break;
-                }
-            }
+                if (keyboard[SlotKeys[i]].wasPressedThisFrame && weapons.Equip(i)) { SetFiring(false); break; }
         }
 
         var mouse = Mouse.current;

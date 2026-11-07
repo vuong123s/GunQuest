@@ -40,14 +40,12 @@
      - **Tác dụng**: Thiết lập cờ nhắm bắn và nổ súng, hỗ trợ đồng bộ cánh tay và tư thế cơ thể nhân vật khi khai hỏa.
   6. `public void FaceCameraDirection()`:
      - **Tác dụng**: Ép xoay phần thân người chơi khớp với hướng nhìn ngang của Camera chính ngay khi người chơi bấm bắn hoặc vung vũ khí.
-  7. `public void PlayAnimation(string stateName, float fadeDuration)`:
-     - **Tác dụng**: Gọi phát một trạng thái hoạt ảnh cụ thể với thời gian chuyển tiếp `CrossFadeInFixedTime`.
-  8. `public void Reload()`, `public void PlayMeleeAnimation()`, `public void PlayHitAnimation()`, `public void PlayDieAnimation()`:
+  7. `public void Reload()`, `public void PlayMeleeAnimation()`, `public void PlayHitAnimation()`, `public void PlayDieAnimation()`:
      - **Tác dụng**: Kích hoạt các trigger hoạt ảnh tương ứng (nạp đạn, vung cận chiến, trúng đòn chao đảo, và gục ngã khi hết máu).
-  9. `private Vector3 GetMoveDirection(Vector2 input)`:
+  8. `private static Vector3 GetMoveDirection(Vector2 input)`:
      - **Tác dụng**: Chiếu vector di chuyển phẳng lên mặt đất vuông góc với vector `Vector3.up`, chuẩn hóa vector để không bị đi nhanh hơn khi bấm đi chéo `(W+D)`.
-  10. `private void UpdateAnimator(Vector2 input)`:
-      - **Tác dụng**: Damping chuyển động của các float parameter (`MoveX`, `MoveY`, `Speed`) với thời gian mượt `animationDampTime = 0.1f` tránh giật hình.
+  9. `private void UpdateAnimator(Vector2 input)`:
+     - **Tác dụng**: Damping chuyển động của các float parameter (`MoveX`, `MoveY`, `Speed`) với thời gian mượt `animationDampTime = 0.1f` tránh giật hình.
 
 ---
 
@@ -117,8 +115,8 @@
      - **Tác dụng**: Bắt đầu Coroutine nạp đạn trong thời gian quy định (1.4s súng lục, 2.0s súng trường). Khi hết thời gian, tính toán số đạn thiếu cần bù từ kho dự trữ `reserves` vào `magazines`.
   6. `public bool QuickMelee()`:
      - **Tác dụng**: Cho phép người chơi nhấn phím `F` hoặc chuột phải để tung đòn đánh cận chiến nhanh ngay cả khi đang cầm súng lục hay súng trường.
-  7. `public bool AddPotion(int amount)` / `AddGrenade()` / `AddPistolAmmo()` / `AddRifleAmmo()`:
-     - **Tác dụng**: Các phương thức công khai tiếp nhận trang bị khi người chơi mua sắm trong Cửa Hàng hoặc nhặt được trên chiến trường, kiểm tra trần tối đa (Max Caps) và kích hoạt sự kiện cập nhật HUD.
+  7. `public void ApplyProgress(ContractProgress value)`:
+     - **Tác dụng**: Đồng bộ cấp độ sát thương, băng đạn và số lượng vật phẩm quân nhu (Bình máu, Lựu đạn, Đạn dự trữ) từ tiến trình lưu trữ sang nhân vật và cập nhật HUD.
 
 ---
 
@@ -198,28 +196,24 @@
     5. **Die**: Hủy NavMesh, dừng hoạt ảnh và ngã gục khi hết máu.
 
 - **Danh sách các hàm quan trọng & tác dụng cụ thể**:
-  1. `public void ConfigureMelee(float damage, float range, float speed, float cooldown, float windup)`:
-     - **Tác dụng**: Thiết lập thông số chuyên biệt cho quái cận chiến, gán cự ly dừng `agent.stoppingDistance = range * 0.6f`.
-  2. `public void ConfigureRanged(float damage, float preferredDist, float shootDist, float speed, float rate)`:
-     - **Tác dụng**: Cấu hình quái bắn xa, cho phép di chuyển linh hoạt và giữ khoảng cách xả đạn.
-  3. `private void UpdateCombatMovement(float distance)`:
+  1. `private void UpdateCombatMovement(float distance)`:
      - **Tác dụng**: Phân loại logic di chuyển: Quái cận chiến gọi `UpdateMeleeMovement()`; Quái tầm xa tính vector lùi hoặc vector vuông góc với hướng người chơi để strafe đảo hướng ngẫu nhiên sau mỗi $1.4 - 2.8$ giây.
-  4. `private void FacePlayer()`:
+  2. `private void FacePlayer()`:
      - **Tác dụng**: Dùng phép nội suy xoay `Quaternion.Slerp` xoay mượt phần thân quái hướng thẳng về phía người chơi theo vận tốc xoay `turnSpeed = 10f`.
-  5. `private void UpdateEyeAim()`:
+  3. `private void UpdateEyeAim()`:
      - **Tác dụng**: Điều khiển nhãn cầu độc lập của quái mắt một tròng (Beholder/Monster1), xoay ống ngắm nòng mắt `gunBarrel` tracking theo vị trí đầu của người chơi trước khi bắn.
-  6. `private void BeginAttack()`:
+  4. `private void BeginAttack()`:
      - **Tác dụng**: Chọn ngẫu nhiên 1 trong 3 thế đánh (AttackIndex 0-2), kích hoạt trigger hoạt ảnh, đặt cờ trễ ra đòn `pendingShotTime` theo thời gian wind-up.
-  7. `private void FirePendingShot()`:
+  5. `private void FirePendingShot()`:
      - **Tác dụng**: Được kích hoạt sau khi kết thúc thời gian vung đòn. Nếu là quái thường, khởi tạo viên đạn `bulletPrefab` với tốc độ bay `65f`. Nếu là quái boss laser, gọi `StartLaser()`.
-  8. `private void ExecuteMeleeHit()` & `private void PlayMeleeHitFeedback()`:
-     - **Tác dụng**: Kiểm tra người chơi còn nằm trong tầm đánh không; nếu có thì trừ máu `PlayerHealth.TakeDamage(meleeDamage)` và sinh hiệu ứng tóe lửa máu đỏ.
-  9. `private void StartLaser()`, `UpdateLaser()`, `StopLaser()` & `TraceLaser()`:
+  6. `private void ExecuteMeleeHit()`:
+     - **Tác dụng**: Kiểm tra người chơi còn nằm trong tầm đánh không; nếu có thì trừ máu `PlayerHealth.TakeDamage(meleeDamage)` và sinh hiệu ứng tóe lửa máu đỏ (`vfx_Impact_01`).
+  7. `private void StartLaser()`, `UpdateLaser()`, `StopLaser()` & `TraceLaser()`:
      - **Tác dụng**: Quét tia laser mắt liên tục trong thời gian `laserDuration = 1.2f`. Bắn Raycast mỗi 0.2s (`laserDamageInterval`), gây sát thương ngắt quãng lên người chơi và tạo hiệu ứng khói cháy tại điểm tiếp xúc.
-  10. `public void OnDamaged(float damage)`:
-      - **Tác dụng**: Phản xạ lập tức quay mặt về phía kẻ bắn, chuyển sang trạng thái cảnh giác chiến đấu, kích hoạt animation trúng đòn `Hit` (mỗi 4 phát trúng kích hoạt trạng thái choáng váng `Dizzy`).
-  11. `public void DieNow()`:
-      - **Tác dụng**: Khóa toàn bộ AI, tắt NavMeshAgent tránh cản đường người chơi, dừng phát tia laser và gọi animation tử trận.
+  8. `public void OnDamaged(float damage)`:
+     - **Tác dụng**: Phản xạ lập tức quay mặt về phía kẻ bắn, chuyển sang trạng thái cảnh giác chiến đấu, kích hoạt animation trúng đòn `Hit` (mỗi 4 phát trúng kích hoạt trạng thái choáng váng `Dizzy`).
+  9. `public void DieNow()`:
+     - **Tác dụng**: Khóa toàn bộ AI, tắt NavMeshAgent tránh cản đường người chơi, dừng phát tia laser và gọi animation tử trận.
 
 ---
 

@@ -173,7 +173,6 @@ GameObject:
   - component: {fileID: 8181281555920265203}
   - component: {fileID: 7143753118848273969}
   - component: {fileID: 8916510001429462169}
-  - component: {fileID: 4150769357585634425}
   - component: {fileID: 4227479356588358315}
   - component: {fileID: 5384923718302484133}
   - component: {fileID: 4109473462835938942}
@@ -338,22 +337,6 @@ MonoBehaviour:
   overlay: {fileID: 0}
   duration: 1
   fadeSpeed: 1.5
---- !u!114 &4150769357585634425
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5688671225440227994}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b602061f4edad3f44903a6b6b4beb499, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerInteract
-  distance: 3
-  mask:
-    serializedVersion: 2
-    m_Bits: 4294967295
 --- !u!114 &4227479356588358315
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1,361 +1,284 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class MonsterEffects : MonoBehaviour
 {
-    [Header("VFX Asset References")]
-    [SerializeField] private GameObject vfxRoot;
-    [SerializeField] private LineRenderer laserGlow;
-    [SerializeField] private LineRenderer laserBody;
-    [SerializeField] private LineRenderer laserCore;
-    [SerializeField] private ParticleSystem eyeCharge;
-    [SerializeField] private ParticleSystem muzzleFlash;
-    [SerializeField] private Transform impactRoot;
-    [SerializeField] private ParticleSystem impactGlow;
-    [SerializeField] private ParticleSystem impactSparks;
-    [SerializeField] private ParticleSystem hitBurst;
-    [SerializeField] private ParticleSystem deathBurst;
-    [SerializeField] private Light muzzleLight;
-    [SerializeField] private Light impactLight;
-    [SerializeField] private AudioSource audioSource;
-    [SerializeField] private AudioClip laserLoop;
+    [SerializeField] private Color effectColor = new Color(1f, 0.25f, 0.12f, 1f);
+    [SerializeField] private Material laserMaterial;
+    [SerializeField] private float laserWidth = 0.2f;
+    [SerializeField] private float coreLaserWidth = 0.085f;
+    [SerializeField] private float hitFlashDuration = 0.08f;
 
-    [Header("Laser Motion")]
-    [SerializeField] private float pulseSpeed = 24f;
-    [SerializeField, Range(0f, 0.3f)] private float pulseAmount = 0.1f;
-    [SerializeField] private float fadeDuration = 0.16f;
-    [SerializeField, Min(0f)] private float impactSurfaceOffset = 0.12f;
-
-    [Header("Hit Feedback")]
-    [SerializeField] private Color hitColor = new Color(1f, 0.08f, 0.18f);
-    [SerializeField] private Color deathColor = new Color(0.7f, 0.1f, 1f);
-
-    private Renderer[] bodyRenderers;
-    private MaterialPropertyBlock bodyGlowBlock;
-    private Coroutine hitRoutine;
-    private Coroutine fadeRoutine;
-    private BeamColors glowColors;
-    private BeamColors bodyColors;
-    private BeamColors coreColors;
-    private float glowWidth;
-    private float bodyWidth;
-    private float coreWidth;
-    private float muzzleLightIntensity;
-    private float impactLightIntensity;
-    private bool laserActive;
-    private bool impactActive;
-    private bool ready;
+    private Renderer[] renderers;
+    private Color[] baseColors;
+    private Transform muzzle;
+    private ParticleSystem attackBurst, hitBurst, deathBurst, laserMuzzleParticles, laserImpactParticles;
+    private Light attackLight, laserImpactLight;
+    private LineRenderer outerLaser, coreLaser;
+    private AudioSource audioSource;
+    private AudioClip attackClip, hitClip, deathClip;
+    private Coroutine flashRoutine, lightRoutine;
 
     private void Awake()
     {
-        bodyGlowBlock = new MaterialPropertyBlock();
-        bodyRenderers = FindBodyRenderers();
-        ready = HasRequiredReferences();
+        CacheRenderers();
+        muzzle = FindMuzzle();
+        EnsureParticles();
+        EnsureAudio();
+    }
 
-        if (!ready)
+    public void BeginLaser(Vector3 origin, Vector3 hitPoint, Vector3 hitNormal, bool hitSomething)
+    {
+        EnsureLaser();
+        UpdateLaser(origin, hitPoint, hitNormal, hitSomething);
+        outerLaser.enabled = coreLaser.enabled = true;
+        if (attackLight != null) attackLight.enabled = true;
+        attackBurst?.Emit(16);
+        laserMuzzleParticles?.Play();
+        PlaySound(attackClip, 0.55f);
+    }
+
+    public void UpdateLaser(Vector3 origin, Vector3 hitPoint, Vector3 hitNormal, bool hitSomething)
+    {
+        if (outerLaser == null || coreLaser == null) return;
+        float pulse = 1f + Mathf.Sin(Time.time * 42f) * 0.18f;
+        outerLaser.widthMultiplier = laserWidth * pulse;
+        coreLaser.widthMultiplier = coreLaserWidth * pulse;
+        outerLaser.SetPosition(0, origin); outerLaser.SetPosition(1, hitPoint);
+        coreLaser.SetPosition(0, origin); coreLaser.SetPosition(1, hitPoint);
+
+        if (attackLight != null)
         {
-            Debug.LogError("[MonsterEffects] Monster1 VFX references are missing.", this);
-            enabled = false;
-            return;
+            attackLight.transform.position = origin;
+            attackLight.enabled = true;
+            attackLight.intensity = 4f * pulse;
         }
-
-        glowColors = new BeamColors(laserGlow);
-        bodyColors = new BeamColors(laserBody);
-        coreColors = new BeamColors(laserCore);
-        glowWidth = laserGlow.widthMultiplier;
-        bodyWidth = laserBody.widthMultiplier;
-        coreWidth = laserCore.widthMultiplier;
-        muzzleLightIntensity = muzzleLight.intensity;
-        impactLightIntensity = impactLight.intensity;
-        StopLaserImmediate();
-    }
-
-    private void OnDisable()
-    {
-        if (ready) StopLaserImmediate();
-    }
-
-    public void BeginLaser(Vector3 start, Vector3 end, Vector3 hitNormal, bool hitSomething)
-    {
-        if (!ready) return;
-
-        if (fadeRoutine != null)
+        if (laserMuzzleParticles != null)
         {
-            StopCoroutine(fadeRoutine);
-            fadeRoutine = null;
+            laserMuzzleParticles.transform.SetPositionAndRotation(origin, Quaternion.LookRotation((hitPoint - origin).normalized));
+            if (!laserMuzzleParticles.isPlaying) laserMuzzleParticles.Play();
         }
-
-        laserActive = true;
-        SetBeamEnabled(true);
-        ApplyBeamAppearance(1f, 1f);
-
-        Quaternion beamRotation = DirectionRotation(start, end);
-        PlayAt(eyeCharge, start, beamRotation);
-        PlayAt(muzzleFlash, start, beamRotation);
-
-        audioSource.clip = laserLoop;
-        audioSource.loop = true;
-        if (laserLoop != null) audioSource.Play();
-
-        UpdateLaser(start, end, hitNormal, hitSomething);
-    }
-
-    public void UpdateLaser(Vector3 start, Vector3 end, Vector3 hitNormal, bool hitSomething)
-    {
-        if (!ready || !laserActive) return;
-
-        SetBeam(laserGlow, start, end);
-        SetBeam(laserBody, start, end);
-        SetBeam(laserCore, start, end);
-
-        Quaternion beamRotation = DirectionRotation(start, end);
-        eyeCharge.transform.SetPositionAndRotation(start, beamRotation);
-        muzzleFlash.transform.SetPositionAndRotation(start, beamRotation);
-
-        float pulse = 1f + Mathf.Sin(Time.time * pulseSpeed) * pulseAmount;
-        ApplyBeamAppearance(1f, pulse);
-        muzzleLight.transform.position = start;
-        muzzleLight.intensity = muzzleLightIntensity * pulse;
-        muzzleLight.enabled = true;
-
-        UpdateImpact(end, hitNormal, hitSomething, pulse);
+        if (laserImpactParticles != null)
+        {
+            Vector3 normal = hitNormal.sqrMagnitude > 0.001f ? hitNormal : Vector3.up;
+            laserImpactParticles.transform.SetPositionAndRotation(hitPoint + normal * 0.03f, Quaternion.LookRotation(normal));
+            if (hitSomething && !laserImpactParticles.isPlaying) laserImpactParticles.Play();
+            else if (!hitSomething && laserImpactParticles.isPlaying) laserImpactParticles.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        }
+        if (laserImpactLight != null)
+        {
+            laserImpactLight.transform.position = hitPoint + hitNormal * 0.08f;
+            laserImpactLight.enabled = hitSomething;
+            laserImpactLight.intensity = 3.2f * pulse;
+        }
     }
 
     public void EndLaser()
     {
-        if (!ready || !laserActive) return;
-
-        laserActive = false;
-        StopParticle(eyeCharge);
-        StopParticle(muzzleFlash);
-        StopImpact();
-        muzzleLight.enabled = false;
-        audioSource.Stop();
-
-        if (fadeRoutine != null) StopCoroutine(fadeRoutine);
-        fadeRoutine = StartCoroutine(FadeLaser());
+        if (outerLaser != null) outerLaser.enabled = false;
+        if (coreLaser != null) coreLaser.enabled = false;
+        if (attackLight != null) attackLight.enabled = false;
+        if (laserImpactLight != null) laserImpactLight.enabled = false;
+        laserMuzzleParticles?.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        laserImpactParticles?.Stop(true, ParticleSystemStopBehavior.StopEmitting);
     }
 
-    public void PlayHit(Vector3 worldPoint)
+    public void PlayHit(Vector3 hitPoint)
     {
-        if (!ready) return;
-
-        PlayAt(hitBurst, worldPoint, Quaternion.identity);
-        if (hitRoutine != null) StopCoroutine(hitRoutine);
-        hitRoutine = StartCoroutine(FlashBody());
+        if (hitBurst != null)
+        {
+            hitBurst.transform.position = hitPoint;
+            hitBurst.Emit(16);
+        }
+        if (flashRoutine != null) StopCoroutine(flashRoutine);
+        flashRoutine = StartCoroutine(FlashRenderers());
+        PlaySound(hitClip, 0.45f);
     }
 
     public void PlayDeath()
     {
-        if (!ready) return;
-
         EndLaser();
-        PlayAt(deathBurst, transform.position + Vector3.up * 1.35f, Quaternion.identity);
-        SetBodyGlow(deathColor * 3f);
-    }
-
-    private void UpdateImpact(Vector3 position, Vector3 normal, bool hitSomething, float pulse)
-    {
-        if (!hitSomething)
+        if (deathBurst != null)
         {
-            StopImpact();
-            return;
+            deathBurst.transform.position = transform.position + Vector3.up * 1.1f;
+            deathBurst.Emit(36);
         }
+        PlaySound(deathClip, 0.65f);
+    }
 
-        Quaternion rotation = normal.sqrMagnitude > 0.001f
-            ? Quaternion.LookRotation(normal)
-            : Quaternion.identity;
-        impactRoot.SetPositionAndRotation(position + normal.normalized * impactSurfaceOffset, rotation);
-
-        if (!impactActive)
+    private void CacheRenderers()
+    {
+        renderers = GetComponentsInChildren<Renderer>();
+        baseColors = new Color[renderers.Length];
+        for (int i = 0; i < renderers.Length; i++)
         {
-            impactActive = true;
-            impactGlow.Clear(true);
-            impactSparks.Clear(true);
-            impactGlow.Play(true);
-            impactSparks.Play(true);
-        }
-
-        impactLight.enabled = true;
-        impactLight.intensity = impactLightIntensity * pulse;
-    }
-
-    private void StopImpact()
-    {
-        if (!impactActive && !impactLight.enabled) return;
-
-        impactActive = false;
-        StopParticle(impactGlow);
-        StopParticle(impactSparks);
-        impactLight.enabled = false;
-    }
-
-    private IEnumerator FadeLaser()
-    {
-        float elapsed = 0f;
-        while (elapsed < fadeDuration)
-        {
-            elapsed += Time.deltaTime;
-            float progress = Mathf.Clamp01(elapsed / Mathf.Max(fadeDuration, 0.01f));
-            float alpha = 1f - progress;
-            ApplyBeamAppearance(alpha, Mathf.Lerp(1f, 0.2f, progress));
-            yield return null;
-        }
-
-        SetBeamEnabled(false);
-        ApplyBeamAppearance(1f, 1f);
-        fadeRoutine = null;
-    }
-
-    private IEnumerator FlashBody()
-    {
-        SetBodyGlow(hitColor * 3f);
-        yield return new WaitForSeconds(0.09f);
-        ClearBodyGlow();
-        hitRoutine = null;
-    }
-
-    private void StopLaserImmediate()
-    {
-        laserActive = false;
-        impactActive = false;
-
-        if (fadeRoutine != null)
-        {
-            StopCoroutine(fadeRoutine);
-            fadeRoutine = null;
-        }
-
-        SetBeamEnabled(false);
-        ApplyBeamAppearance(1f, 1f);
-        StopParticle(eyeCharge);
-        StopParticle(muzzleFlash);
-        StopParticle(impactGlow);
-        StopParticle(impactSparks);
-        muzzleLight.enabled = false;
-        impactLight.enabled = false;
-        audioSource.Stop();
-    }
-
-    private void ApplyBeamAppearance(float alpha, float widthScale)
-    {
-        laserGlow.widthMultiplier = glowWidth * widthScale;
-        laserBody.widthMultiplier = bodyWidth * widthScale;
-        laserCore.widthMultiplier = coreWidth * widthScale;
-        glowColors.Apply(laserGlow, alpha * 0.65f);
-        bodyColors.Apply(laserBody, alpha * 0.9f);
-        coreColors.Apply(laserCore, alpha);
-    }
-
-    private void SetBeamEnabled(bool value)
-    {
-        laserGlow.enabled = value;
-        laserBody.enabled = value;
-        laserCore.enabled = value;
-    }
-
-    private Renderer[] FindBodyRenderers()
-    {
-        List<Renderer> renderers = new List<Renderer>();
-        foreach (Renderer candidate in GetComponentsInChildren<Renderer>(true))
-        {
-            if (candidate is not MeshRenderer && candidate is not SkinnedMeshRenderer) continue;
-            if (vfxRoot != null && candidate.transform.IsChildOf(vfxRoot.transform)) continue;
-            renderers.Add(candidate);
-        }
-
-        return renderers.ToArray();
-    }
-
-    private bool HasRequiredReferences()
-    {
-        return vfxRoot != null &&
-               laserGlow != null &&
-               laserBody != null &&
-               laserCore != null &&
-               eyeCharge != null &&
-               muzzleFlash != null &&
-               impactRoot != null &&
-               impactGlow != null &&
-               impactSparks != null &&
-               hitBurst != null &&
-               deathBurst != null &&
-               muzzleLight != null &&
-               impactLight != null &&
-               audioSource != null;
-    }
-
-    private void SetBodyGlow(Color color)
-    {
-        foreach (Renderer bodyRenderer in bodyRenderers)
-        {
-            if (bodyRenderer == null) continue;
-            bodyRenderer.GetPropertyBlock(bodyGlowBlock);
-            bodyGlowBlock.SetColor("_EmissionColor", color);
-            bodyRenderer.SetPropertyBlock(bodyGlowBlock);
-            bodyGlowBlock.Clear();
+            Material mat = renderers[i].material;
+            baseColors[i] = mat.HasProperty("_BaseColor") ? mat.GetColor("_BaseColor") : (mat.HasProperty("_Color") ? mat.color : Color.white);
         }
     }
 
-    private void ClearBodyGlow()
+    private Transform FindMuzzle()
     {
-        foreach (Renderer bodyRenderer in bodyRenderers)
+        foreach (Transform child in GetComponentsInChildren<Transform>(true))
+            if (child.name == "MonsterMuzzle") return child;
+        GameObject m = new GameObject("MonsterMuzzle");
+        m.transform.SetParent(transform, false);
+        m.transform.localPosition = new Vector3(0f, 1.2f, 0.9f);
+        return m.transform;
+    }
+
+    private void EnsureParticles()
+    {
+        if (attackBurst == null)
         {
-            if (bodyRenderer != null) bodyRenderer.SetPropertyBlock(null);
+            attackBurst = CreateParticles("AttackVFX", muzzle, effectColor, 0.16f, 3.5f, 0.12f);
+            GameObject lightObj = new GameObject("AttackLight");
+            lightObj.transform.SetParent(muzzle, false);
+            attackLight = lightObj.AddComponent<Light>();
+            attackLight.type = LightType.Point;
+            attackLight.range = 4.5f;
+            attackLight.intensity = 3.2f;
+            attackLight.color = effectColor;
+            attackLight.enabled = false;
+        }
+        if (hitBurst == null) hitBurst = CreateParticles("HitVFX", transform, new Color(1f, 0.7f, 0.2f), 0.2f, 4f, 0.12f);
+        if (deathBurst == null) deathBurst = CreateParticles("DeathVFX", transform, effectColor, 0.45f, 5.5f, 0.22f);
+    }
+
+    private void EnsureLaser()
+    {
+        if (outerLaser != null && coreLaser != null) return;
+        Material sharedMat = GetLaserMaterial();
+        outerLaser = CreateLaserRenderer("EyeLaserOuter", sharedMat, new Color(1f, 0.12f, 0.05f, 0.78f), new Color(1f, 0.35f, 0.08f, 0.55f), laserWidth);
+        coreLaser = CreateLaserRenderer("EyeLaserCore", sharedMat, new Color(1f, 0.95f, 0.75f, 0.98f), new Color(1f, 0.65f, 0.25f, 0.92f), coreLaserWidth);
+        laserMuzzleParticles = CreateContinuousLaserParticles("EyeLaserMuzzleVFX", muzzle, new Color(1f, 0.42f, 0.12f), 0.12f, 2.2f, 0.12f, 55f);
+        laserImpactParticles = CreateContinuousLaserParticles("EyeLaserImpactVFX", transform, new Color(1f, 0.55f, 0.16f), 0.18f, 3.8f, 0.14f, 70f);
+
+        GameObject lightObj = new GameObject("EyeLaserImpactLight");
+        lightObj.transform.SetParent(transform, false);
+        laserImpactLight = lightObj.AddComponent<Light>();
+        laserImpactLight.type = LightType.Point;
+        laserImpactLight.range = 4.5f;
+        laserImpactLight.intensity = 3.2f;
+        laserImpactLight.color = new Color(1f, 0.32f, 0.12f);
+        laserImpactLight.enabled = false;
+    }
+
+    private LineRenderer CreateLaserRenderer(string name, Material sharedMat, Color startColor, Color endColor, float width)
+    {
+        GameObject laserObj = new GameObject(name);
+        laserObj.transform.SetParent(transform, false);
+        LineRenderer lr = laserObj.AddComponent<LineRenderer>();
+        lr.positionCount = 2; lr.useWorldSpace = true;
+        lr.widthMultiplier = width; lr.numCapVertices = 6; lr.numCornerVertices = 4;
+        lr.textureMode = LineTextureMode.Tile;
+        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        lr.receiveShadows = false;
+        lr.material = new Material(sharedMat);
+        lr.startColor = startColor; lr.endColor = endColor;
+        lr.enabled = false;
+        return lr;
+    }
+
+    private Material GetLaserMaterial()
+    {
+        if (laserMaterial != null) return laserMaterial;
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default");
+        return laserMaterial = new Material(shader) { name = "RuntimeMonsterLaser" };
+    }
+
+    private static ParticleSystem CreateParticles(string name, Transform parent, Color color, float lifetime, float speed, float size)
+    {
+        GameObject effect = new GameObject(name);
+        effect.transform.SetParent(parent, false);
+        ParticleSystem ps = effect.AddComponent<ParticleSystem>();
+        var main = ps.main;
+        main.playOnAwake = false; main.loop = false;
+        main.startLifetime = lifetime; main.startSpeed = speed; main.startSize = size;
+        main.startColor = color; main.simulationSpace = ParticleSystemSimulationSpace.World;
+        var emission = ps.emission; emission.enabled = false;
+        var shape = ps.shape; shape.shapeType = ParticleSystemShapeType.Sphere; shape.radius = 0.08f;
+        var renderer = effect.GetComponent<ParticleSystemRenderer>();
+        renderer.material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Sprites/Default"));
+        return ps;
+    }
+
+    private ParticleSystem CreateContinuousLaserParticles(string name, Transform parent, Color color, float lifetime, float speed, float size, float rate)
+    {
+        ParticleSystem ps = CreateParticles(name, parent, color, lifetime, speed, size);
+        var main = ps.main; main.loop = true;
+        var emission = ps.emission; emission.enabled = true; emission.rateOverTime = rate;
+        var renderer = ps.GetComponent<ParticleSystemRenderer>();
+        renderer.material = new Material(GetLaserMaterial());
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        return ps;
+    }
+
+    private IEnumerator FlashRenderers()
+    {
+        SetRendererColor(new Color(1f, 0.35f, 0.25f));
+        yield return new WaitForSeconds(hitFlashDuration);
+        RestoreRendererColors();
+    }
+
+    private void SetRendererColor(Color color)
+    {
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] == null) continue;
+            Material mat = renderers[i].material;
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            if (mat.HasProperty("_Color")) mat.color = color;
         }
     }
 
-    private static void PlayAt(
-        ParticleSystem particles,
-        Vector3 position,
-        Quaternion rotation)
+    private void RestoreRendererColors()
     {
-        particles.transform.SetPositionAndRotation(position, rotation);
-        particles.Clear(true);
-        particles.Play(true);
-    }
-
-    private static void StopParticle(ParticleSystem particles)
-    {
-        particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-    }
-
-    private static void SetBeam(LineRenderer beam, Vector3 start, Vector3 end)
-    {
-        beam.SetPosition(0, start);
-        beam.SetPosition(1, end);
-    }
-
-    private static Quaternion DirectionRotation(Vector3 start, Vector3 end)
-    {
-        Vector3 direction = end - start;
-        return direction.sqrMagnitude > 0.001f
-            ? Quaternion.LookRotation(direction)
-            : Quaternion.identity;
-    }
-
-    private readonly struct BeamColors
-    {
-        private readonly Color start;
-        private readonly Color end;
-
-        public BeamColors(LineRenderer beam)
+        for (int i = 0; i < renderers.Length; i++)
         {
-            start = beam.startColor;
-            end = beam.endColor;
+            if (renderers[i] == null) continue;
+            Material mat = renderers[i].material;
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", baseColors[i]);
+            if (mat.HasProperty("_Color")) mat.color = baseColors[i];
         }
+    }
 
-        public void Apply(LineRenderer beam, float alpha)
-        {
-            beam.startColor = WithAlpha(start, start.a * alpha);
-            beam.endColor = WithAlpha(end, end.a * alpha);
-        }
+    private void EnsureAudio()
+    {
+        audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 0.85f;
+        audioSource.maxDistance = 24f;
+        attackClip = CreateTone("MonsterAttack", 0.16f, 220f, 92f, 26f);
+        hitClip = CreateTone("MonsterHit", 0.09f, 340f, 160f, 34f);
+        deathClip = CreateTone("MonsterDeath", 0.42f, 180f, 48f, 7f);
+    }
 
-        private static Color WithAlpha(Color color, float alpha)
+    private void PlaySound(AudioClip clip, float volume)
+    {
+        if (audioSource == null || clip == null) return;
+        audioSource.pitch = Random.Range(0.92f, 1.08f);
+        float sfxVol = GameSettings.Instance != null ? GameSettings.Instance.sfxVolume : 0.8f;
+        audioSource.PlayOneShot(clip, volume * sfxVol);
+    }
+
+    private static AudioClip CreateTone(string name, float duration, float startFreq, float endFreq, float decay)
+    {
+        const int sampleRate = 44100;
+        int sampleCount = Mathf.CeilToInt(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+        System.Random random = new System.Random(name.GetHashCode());
+        for (int i = 0; i < sampleCount; i++)
         {
-            color.a = alpha;
-            return color;
+            float t = i / (float)sampleRate;
+            float frequency = Mathf.Lerp(startFreq, endFreq, t / duration);
+            float envelope = Mathf.Exp(-decay * t);
+            float wave = Mathf.Sin(2f * Mathf.PI * frequency * t);
+            float noise = (float)(random.NextDouble() * 2.0 - 1.0);
+            samples[i] = (wave * 0.65f + noise * 0.35f) * envelope;
         }
+        AudioClip clip = AudioClip.Create(name, sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
     }
 }
