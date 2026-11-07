@@ -64,11 +64,6 @@ public class ContractGame : MonoBehaviour
         player = Object.FindFirstObjectByType<PlayerHealth>();
         input = player != null ? player.GetComponent<InputManager>() : null;
         if (contractTarget != null) contractTarget.Died += OnTargetDied;
-        // Replace only the legacy HUD in this scene; keep the original scene objects recoverable.
-        var legacy = GameObject.Find("Canvas");
-        if (legacy != null) legacy.SetActive(false);
-        var crosshair = Object.FindFirstObjectByType<CrosshairUI>();
-        if (crosshair != null) crosshair.gameObject.SetActive(false);
         ui = gameObject.AddComponent<ContractUI>();
         ui.Initialize(this, player);
         SetPhase(Phase.Board);
@@ -199,45 +194,19 @@ public class ContractGame : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    public bool BuyUpgrade(bool damage)
+    private bool ApplyPurchase(bool success)
     {
-        if (State != Phase.Board || !Progress.TryBuy(damage)) return false;
+        if (!success) return false;
         Progress.Save();
         player?.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
         return true;
     }
 
-    public bool BuyPistolAmmo()
-    {
-        if (State != Phase.Board || !Progress.TryBuyPistolAmmo()) return false;
-        Progress.Save();
-        player?.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
-        return true;
-    }
-
-    public bool BuyRifleAmmo()
-    {
-        if (State != Phase.Board || !Progress.TryBuyRifleAmmo()) return false;
-        Progress.Save();
-        player?.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
-        return true;
-    }
-
-    public bool BuyPotion()
-    {
-        if (State != Phase.Board || !Progress.TryBuyPotion()) return false;
-        Progress.Save();
-        player?.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
-        return true;
-    }
-
-    public bool BuyGrenade()
-    {
-        if (State != Phase.Board || !Progress.TryBuyGrenade()) return false;
-        Progress.Save();
-        player?.GetComponent<PlayerWeapons>()?.ApplyProgress(Progress);
-        return true;
-    }
+    public bool BuyUpgrade(bool damage) => State == Phase.Board && ApplyPurchase(Progress.TryBuy(damage));
+    public bool BuyPistolAmmo() => State == Phase.Board && ApplyPurchase(Progress.TryBuyPistolAmmo());
+    public bool BuyRifleAmmo() => State == Phase.Board && ApplyPurchase(Progress.TryBuyRifleAmmo());
+    public bool BuyPotion() => State == Phase.Board && ApplyPurchase(Progress.TryBuyPotion());
+    public bool BuyGrenade() => State == Phase.Board && ApplyPurchase(Progress.TryBuyGrenade());
 
     private void Fail(string reason) { FailureReason = reason; SetPhase(Phase.Lost); }
     private void SetPhase(Phase phase)

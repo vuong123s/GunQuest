@@ -190,55 +190,37 @@ public class PlayerWeapons : MonoBehaviour
     public int PistolReserve => (reserves != null && reserves.Length > 0) ? reserves[0] : (progress != null ? progress.pistolAmmoReserve : 0);
     public int RifleReserve => (reserves != null && reserves.Length > 1) ? reserves[1] : (progress != null ? progress.rifleAmmoReserve : 0);
 
-    public bool AddPotion(int amount = 1)
+    private bool AddSlotItem(int slotIndex, int amount, int max, System.Action<int> updateProgress, string msg, Color color)
     {
-        int idx = PotionSlotIndex;
-        if (idx < 0) return false;
-        int max = ContractProgress.MaxPotions;
-        if (slots[idx].count >= max) return false;
-        slots[idx].count = Mathf.Min(max, slots[idx].count + amount);
-        if (progress != null) progress.healthPotionCount = slots[idx].count;
+        if (slotIndex < 0 || slots[slotIndex].count >= max) return false;
+        slots[slotIndex].count = Mathf.Min(max, slots[slotIndex].count + amount);
+        if (progress != null) updateProgress(slots[slotIndex].count);
         Changed?.Invoke();
-        StatusMessage?.Invoke("+1 Bình Máu (" + slots[idx].count + "/" + max + ")", new Color(1f, 0.35f, 0.45f));
+        StatusMessage?.Invoke($"{msg} ({slots[slotIndex].count}/{max})", color);
         return true;
     }
 
-    public bool AddGrenade(int amount = 1)
+    private bool AddReserveAmmo(int reserveIndex, int amount, int max, System.Action<int> updateProgress, string msg, Color color)
     {
-        int idx = GrenadeSlotIndex;
-        if (idx < 0) return false;
-        int max = ContractProgress.MaxGrenades;
-        if (slots[idx].count >= max) return false;
-        slots[idx].count = Mathf.Min(max, slots[idx].count + amount);
-        if (progress != null) progress.grenadeCount = slots[idx].count;
+        if (reserves == null || reserveIndex >= reserves.Length || reserves[reserveIndex] >= max) return false;
+        reserves[reserveIndex] = Mathf.Min(max, reserves[reserveIndex] + amount);
+        if (progress != null) updateProgress(reserves[reserveIndex]);
         Changed?.Invoke();
-        StatusMessage?.Invoke("+1 Lựu Đạn (" + slots[idx].count + "/" + max + ")", new Color(1f, 0.8f, 0.25f));
+        StatusMessage?.Invoke($"{msg} ({reserves[reserveIndex]}/{max})", color);
         return true;
     }
 
-    public bool AddPistolAmmo(int amount = 30)
-    {
-        if (reserves == null || reserves.Length <= 0) return false;
-        int max = ContractProgress.MaxPistolReserve;
-        if (reserves[0] >= max) return false;
-        reserves[0] = Mathf.Min(max, reserves[0] + amount);
-        if (progress != null) progress.pistolAmmoReserve = reserves[0];
-        Changed?.Invoke();
-        StatusMessage?.Invoke("+30 Đạn Súng Lục (" + reserves[0] + "/" + max + ")", new Color(0.35f, 0.9f, 1f));
-        return true;
-    }
+    public bool AddPotion(int amount = 1) =>
+        AddSlotItem(PotionSlotIndex, amount, ContractProgress.MaxPotions, c => progress.healthPotionCount = c, "+1 Bình Máu", new Color(1f, 0.35f, 0.45f));
 
-    public bool AddRifleAmmo(int amount = 60)
-    {
-        if (reserves == null || reserves.Length <= 1) return false;
-        int max = ContractProgress.MaxRifleReserve;
-        if (reserves[1] >= max) return false;
-        reserves[1] = Mathf.Min(max, reserves[1] + amount);
-        if (progress != null) progress.rifleAmmoReserve = reserves[1];
-        Changed?.Invoke();
-        StatusMessage?.Invoke("+60 Đạn Súng Trường (" + reserves[1] + "/" + max + ")", new Color(0.35f, 0.9f, 1f));
-        return true;
-    }
+    public bool AddGrenade(int amount = 1) =>
+        AddSlotItem(GrenadeSlotIndex, amount, ContractProgress.MaxGrenades, c => progress.grenadeCount = c, "+1 Lựu Đạn", new Color(1f, 0.8f, 0.25f));
+
+    public bool AddPistolAmmo(int amount = 30) =>
+        AddReserveAmmo(0, amount, ContractProgress.MaxPistolReserve, r => progress.pistolAmmoReserve = r, "+30 Đạn Súng Lục", new Color(0.35f, 0.9f, 1f));
+
+    public bool AddRifleAmmo(int amount = 60) =>
+        AddReserveAmmo(1, amount, ContractProgress.MaxRifleReserve, r => progress.rifleAmmoReserve = r, "+60 Đạn Súng Trường", new Color(0.35f, 0.9f, 1f));
 
     private void ConfigureCurrent()
     {
@@ -458,14 +440,6 @@ public class PlayerWeapons : MonoBehaviour
         AudioClip clip = AudioClip.Create("ThrowSound", sampleCount, 1, sampleRate, false);
         clip.SetData(samples, 0);
         return clip;
-    }
-
-    private static bool IsShovel(Slot slot)
-    {
-        if (slot == null) return false;
-        string name = slot.label + " " + (slot.model != null ? slot.model.name : "");
-        return name.IndexOf("shovel", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            name.IndexOf("xẻng", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     public bool QuickMelee()

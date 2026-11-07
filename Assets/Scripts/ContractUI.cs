@@ -561,99 +561,25 @@ public class ContractUI : MonoBehaviour
         }
     }
 
-    private void ChangeMasterVolume(float delta)
+    private void UpdateSetting(System.Action<GameSettings> update)
     {
-        var s = GameSettings.Instance;
-        s.masterVolume = Mathf.Clamp01(Mathf.Round((s.masterVolume + delta) * 20f) / 20f);
-        s.Apply();
-        RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-    }
-    private void OnMasterSliderChanged(float val)
-    {
-        var s = GameSettings.Instance;
-        s.masterVolume = Mathf.Clamp01(val);
-        s.Apply();
+        update(GameSettings.Instance);
+        GameSettings.Instance.Apply();
         RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
     }
 
-    private void ChangeSfxVolume(float delta)
-    {
-        var s = GameSettings.Instance;
-        s.sfxVolume = Mathf.Clamp01(Mathf.Round((s.sfxVolume + delta) * 20f) / 20f);
-        s.Apply();
-        RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-    }
-    private void OnSfxSliderChanged(float val)
-    {
-        var s = GameSettings.Instance;
-        s.sfxVolume = Mathf.Clamp01(val);
-        s.Apply();
-        RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-    }
-
-    private void ChangeSensitivity(float delta)
-    {
-        var s = GameSettings.Instance;
-        s.mouseSensitivity = Mathf.Clamp(Mathf.Round((s.mouseSensitivity + delta) * 100f) / 100f, 0.02f, 0.36f);
-        s.Apply();
-        RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-    }
-    private void OnSensitivitySliderChanged(float val)
-    {
-        var s = GameSettings.Instance;
-        s.mouseSensitivity = Mathf.Clamp(val, 0.02f, 0.36f);
-        s.Apply();
-        RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-    }
-
-    private void ToggleInvertY()
-    {
-        var s = GameSettings.Instance;
-        s.invertY = !s.invertY;
-        s.Apply();
-        RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-    }
-
-    private void ChangeFOV(float delta)
-    {
-        var s = GameSettings.Instance;
-        s.fieldOfView = Mathf.Clamp(Mathf.Round(s.fieldOfView + delta), 60f, 105f);
-        s.Apply();
-        RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-    }
-    private void OnFOVSliderChanged(float val)
-    {
-        var s = GameSettings.Instance;
-        s.fieldOfView = Mathf.Clamp(val, 60f, 105f);
-        s.Apply();
-        RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-    }
-
-    private void CycleQuality()
-    {
-        var s = GameSettings.Instance;
-        int count = QualitySettings.names.Length;
-        if (count > 0)
-        {
-            s.qualityLevel = (s.qualityLevel + 1) % count;
-            s.Apply();
-            RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-        }
-    }
-
-    private void ToggleFullscreen()
-    {
-        var s = GameSettings.Instance;
-        s.fullscreen = !s.fullscreen;
-        s.Apply();
-        RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-    }
-
-    private void ResetSettingsToDefaults()
-    {
-        GameSettings.Instance.ResetDefaults();
-        RefreshSettingsUI(game != null && game.State == ContractGame.Phase.Paused);
-    }
+    private void ChangeMasterVolume(float delta) => UpdateSetting(s => s.masterVolume = Mathf.Clamp01(Mathf.Round((s.masterVolume + delta) * 20f) / 20f));
+    private void OnMasterSliderChanged(float val) => UpdateSetting(s => s.masterVolume = Mathf.Clamp01(val));
+    private void ChangeSfxVolume(float delta) => UpdateSetting(s => s.sfxVolume = Mathf.Clamp01(Mathf.Round((s.sfxVolume + delta) * 20f) / 20f));
+    private void OnSfxSliderChanged(float val) => UpdateSetting(s => s.sfxVolume = Mathf.Clamp01(val));
+    private void ChangeSensitivity(float delta) => UpdateSetting(s => s.mouseSensitivity = Mathf.Clamp(Mathf.Round((s.mouseSensitivity + delta) * 100f) / 100f, 0.02f, 0.36f));
+    private void OnSensitivitySliderChanged(float val) => UpdateSetting(s => s.mouseSensitivity = Mathf.Clamp(val, 0.02f, 0.36f));
+    private void ToggleInvertY() => UpdateSetting(s => s.invertY = !s.invertY);
+    private void ChangeFOV(float delta) => UpdateSetting(s => s.fieldOfView = Mathf.Clamp(Mathf.Round(s.fieldOfView + delta), 60f, 105f));
+    private void OnFOVSliderChanged(float val) => UpdateSetting(s => s.fieldOfView = Mathf.Clamp(val, 60f, 105f));
+    private void CycleQuality() => UpdateSetting(s => { if (QualitySettings.names.Length > 0) s.qualityLevel = (s.qualityLevel + 1) % QualitySettings.names.Length; });
+    private void ToggleFullscreen() => UpdateSetting(s => s.fullscreen = !s.fullscreen);
+    private void ResetSettingsToDefaults() => UpdateSetting(s => s.ResetDefaults());
 
         private void SelectMap(int index)
     {
@@ -1179,41 +1105,23 @@ public class ContractUI : MonoBehaviour
 // startTxt handled in isBoard block above
     }
 
+    private void RefreshSupplyItem(Button btn, TMP_Text countText, TMP_Text priceText, int current, int max, int cost, string prefix)
+    {
+        bool isFull = current >= max;
+        bool canBuy = !isFull && game.Progress.credits >= cost;
+        btn.interactable = canBuy;
+        countText.text = $"{prefix}: {current}/{max}" + (isFull ? " (ĐẦY)" : "");
+        priceText.text = isFull ? "ĐÃ ĐẦY TỐI ĐA" : canBuy ? $"MUA  •  {cost} xu" : $"CẦN {cost} XU";
+        priceText.color = canBuy ? Accent : Muted;
+    }
+
     private void RefreshShopSupplies()
     {
         var p = game.Progress;
-        int potionCount = weapons != null ? weapons.PotionCount : p.healthPotionCount;
-        int grenadeCount = weapons != null ? weapons.GrenadeCount : p.grenadeCount;
-        int pistolAmmo = weapons != null ? weapons.PistolReserve : p.pistolAmmoReserve;
-        int rifleAmmo = weapons != null ? weapons.RifleReserve : p.rifleAmmoReserve;
-
-        // 1. Potion
-        bool potionFull = potionCount >= ContractProgress.MaxPotions;
-        buyPotionBtn.interactable = !potionFull && p.credits >= ContractProgress.CostPotion;
-        potionCountText.text = "Đang có: " + potionCount + "/" + ContractProgress.MaxPotions + (potionFull ? " (ĐẦY)" : "");
-        potionPriceText.text = potionFull ? "ĐÃ ĐẦY TỐI ĐA" : buyPotionBtn.interactable ? "MUA  •  " + ContractProgress.CostPotion + " xu" : "CẦN " + ContractProgress.CostPotion + " XU";
-        potionPriceText.color = buyPotionBtn.interactable ? Accent : Muted;
-
-        // 2. Grenade
-        bool grenadeFull = grenadeCount >= ContractProgress.MaxGrenades;
-        buyGrenadeBtn.interactable = !grenadeFull && p.credits >= ContractProgress.CostGrenade;
-        grenadeCountText.text = "Đang có: " + grenadeCount + "/" + ContractProgress.MaxGrenades + (grenadeFull ? " (ĐẦY)" : "");
-        grenadePriceText.text = grenadeFull ? "ĐÃ ĐẦY TỐI ĐA" : buyGrenadeBtn.interactable ? "MUA  •  " + ContractProgress.CostGrenade + " xu" : "CẦN " + ContractProgress.CostGrenade + " XU";
-        grenadePriceText.color = buyGrenadeBtn.interactable ? Accent : Muted;
-
-        // 3. Pistol Ammo
-        bool pistolFull = pistolAmmo >= ContractProgress.MaxPistolReserve;
-        buyPistolAmmoBtn.interactable = !pistolFull && p.credits >= ContractProgress.CostPistolAmmo;
-        pistolAmmoCountText.text = "Dự trữ: " + pistolAmmo + "/" + ContractProgress.MaxPistolReserve + (pistolFull ? " (ĐẦY)" : "");
-        pistolAmmoPriceText.text = pistolFull ? "ĐÃ ĐẦY TỐI ĐA" : buyPistolAmmoBtn.interactable ? "MUA  •  " + ContractProgress.CostPistolAmmo + " xu" : "CẦN " + ContractProgress.CostPistolAmmo + " XU";
-        pistolAmmoPriceText.color = buyPistolAmmoBtn.interactable ? Accent : Muted;
-
-        // 4. Rifle Ammo
-        bool rifleFull = rifleAmmo >= ContractProgress.MaxRifleReserve;
-        buyRifleAmmoBtn.interactable = !rifleFull && p.credits >= ContractProgress.CostRifleAmmo;
-        rifleAmmoCountText.text = "Dự trữ: " + rifleAmmo + "/" + ContractProgress.MaxRifleReserve + (rifleFull ? " (ĐẦY)" : "");
-        rifleAmmoPriceText.text = rifleFull ? "ĐÃ ĐẦY TỐI ĐA" : buyRifleAmmoBtn.interactable ? "MUA  •  " + ContractProgress.CostRifleAmmo + " xu" : "CẦN " + ContractProgress.CostRifleAmmo + " XU";
-        rifleAmmoPriceText.color = buyRifleAmmoBtn.interactable ? Accent : Muted;
+        RefreshSupplyItem(buyPotionBtn, potionCountText, potionPriceText, weapons != null ? weapons.PotionCount : p.healthPotionCount, ContractProgress.MaxPotions, ContractProgress.CostPotion, "Đang có");
+        RefreshSupplyItem(buyGrenadeBtn, grenadeCountText, grenadePriceText, weapons != null ? weapons.GrenadeCount : p.grenadeCount, ContractProgress.MaxGrenades, ContractProgress.CostGrenade, "Đang có");
+        RefreshSupplyItem(buyPistolAmmoBtn, pistolAmmoCountText, pistolAmmoPriceText, weapons != null ? weapons.PistolReserve : p.pistolAmmoReserve, ContractProgress.MaxPistolReserve, ContractProgress.CostPistolAmmo, "Dự trữ");
+        RefreshSupplyItem(buyRifleAmmoBtn, rifleAmmoCountText, rifleAmmoPriceText, weapons != null ? weapons.RifleReserve : p.rifleAmmoReserve, ContractProgress.MaxRifleReserve, ContractProgress.CostRifleAmmo, "Dự trữ");
     }
 
     private void Offer(bool damage, Button button, TMP_Text value, TMP_Text price)
