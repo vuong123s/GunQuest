@@ -40508,6 +40508,7 @@ GameObject:
   - component: {fileID: 940084026343926194}
   - component: {fileID: 2279292924252452976}
   - component: {fileID: 522373372873607896}
+  - component: {fileID: 4978843699860300344}
   - component: {fileID: 5055606527127473386}
   - component: {fileID: 3907170495125287140}
   - component: {fileID: 5009640083189510207}
@@ -42439,6 +42440,22 @@ Transform:
   - {fileID: 2642804756981047471}
   m_Father: {fileID: 6797170295781490998}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4978843699860300344
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3634441305871049947}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b602061f4edad3f44903a6b6b4beb499, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInteract
+  distance: 3
+  mask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &5009640083189510207
 MonoBehaviour:
   m_ObjectHideFlags: 0
