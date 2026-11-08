@@ -1,381 +1,392 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Object = UnityEngine.Object;
 
-[DefaultExecutionOrder(200)]
-public class AnimatedFirstPersonRig : MonoBehaviour
+// Camera-local Female skin, evaluated by its own event-free FPS Animator.
+// Gameplay owns ammo, damage and reload duration; this rig only presents them.
+public sealed class AnimatedFirstPersonRig : IDisposable
 {
-    private const string SleeveResourcePath = "FemaleFirstPersonSleeve";
-    private const string Body01ClipResourcePath = "FemaleFirstPersonBody01";
-    private const string Body02ClipResourcePath = "FemaleFirstPersonBody02";
-    private const string MeleeControllerResourcePath = "FemaleMelee/MeleeMotion";
+    private readonly GameObject root;
+    private readonly Animator animator;
+    private readonly PlayerWeapons weapons;
+    private readonly Transform cameraTransform;
+    private readonly CharacterController controller;
+    private readonly Animator bodyAnimator;
+    private readonly Transform[] upper = new Transform[2], lower = new Transform[2], hand = new Transform[2];
+    private readonly Vector3[] upperRest = new Vector3[2], readyHand = new Vector3[2];
+    private readonly Quaternion[] readyRotation = new Quaternion[2];
+    private readonly Dictionary<Transform, Transform> copies = new Dictionary<Transform, Transform>();
+    private Transform model, muzzle;
+    private Quaternion gripRotation, wristCorrection;
+    private Vector3 supportGrip;
+    private readonly Vector3[] animatedDelta = new Vector3[2];
+    private readonly Quaternion[] animatedRotation = new Quaternion[2];
+    private readonly Animator meleeAnimator;
+    private readonly Transform meleePose;
+    private readonly PlayerMelee melee;
+    private string meleeState = "Idle";
+    private MeleeAttackTiming meleeTiming;
+    private Vector3 recoil, recoilVelocity, sway, swayVelocity;
+    private Vector3 previousAngles;
+    private float stepPhase, movement, sprint, aim, equipDrop, landing, landingVelocity;
+    private float wallPullback, wallPullbackVelocity;
+    private bool wasReloading, wasGrounded;
+    private float reloadBlend;
+    public Transform Muzzle => muzzle;
+    public GameObject Root => root;
 
-    private static readonly int MeleeBatTrigger = Animator.StringToHash("SwingBat");
-    private static readonly int MeleeQuickTrigger = Animator.StringToHash("SwingQuick");
-    private static readonly int MeleeActiveBool = Animator.StringToHash("Active");
-
-    private static readonly Vector3[] ClippedHoldBones =
+    public AnimatedFirstPersonRig(Animator source, PlayerWeapons weapons, Camera camera)
     {
-        new Vector3(0.01f, 0.01f, 0.01f), // root
-        new Vector3(0.01f, 0.01f, 0.01f), // pelvis
-        new Vector3(0.01f, 0.01f, 0.01f), // spine_01
-        new Vector3(0.01f, 0.01f, 0.01f), // spine_02
-        new Vector3(0.01f, 0.01f, 0.01f), // spine_03
-        new Vector3(0.01f, 0.01f, 0.01f), // thigh_l
-        new Vector3(0.01f, 0.01f, 0.01f), // calf_l
-        new Vector3(0.01f, 0.01f, 0.01f), // foot_l
-        new Vector3(0.01f, 0.01f, 0.01f), // ball_l
-        new Vector3(0.01f, 0.01f, 0.01f), // thigh_r
-        new Vector3(0.01f, 0.01f, 0.01f), // calf_r
-        new Vector3(0.01f, 0.01f, 0.01f), // foot_r
-        new Vector3(0.01f, 0.01f, 0.01f), // ball_r
-        new Vector3(0.01f, 0.01f, 0.01f), // clavicle_l
-        new Vector3(0.55f, 1f, 1f),       // upperarm_l
-        Vector3.one,                      // lowerarm_l
-        Vector3.one,                      // hand_l
-        new Vector3(0.01f, 0.01f, 0.01f), // clavicle_r
-        new Vector3(0.55f, 1f, 1f),       // upperarm_r
-        Vector3.one,                      // lowerarm_r
-        Vector3.one,                      // hand_r
-        new Vector3(0.01f, 0.01f, 0.01f), // neck_01
-        new Vector3(0.01f, 0.01f, 0.01f), // head
-    };
-
-    private Transform sourceRoot;
-    private Transform combatRig;
-    private Transform meleeMotionDriver;
-    private Animator animator;
-    private Animator meleeMotionAnimator;
-    private CharacterController controller;
-    private PlayerWeapons weapons;
-    private Transform clavicleL, upperArmL, lowerArmL, handL;
-    private Transform clavicleR, upperArmR, lowerArmR, handR;
-    private Transform weaponRoot, pistol, rifle, bat, potion, grenade;
-    private Transform[] allWeapons;
-    private Transform[] body02Bones;
-    private float bobTime;
-    private float kick;
-    private bool bound;
-
-    public void Initialize(Transform player, Transform visualRoot, int viewModelLayer)
-    {
-        controller = player != null ? player.GetComponent<CharacterController>() : null;
-        BindWeapons(player != null ? player.GetComponent<PlayerWeapons>() : null);
-        if (visualRoot == null) return;
-
-        if (sourceRoot != visualRoot || combatRig == null)
+        this.weapons = weapons;
+        melee = weapons.GetComponent<PlayerMelee>();
+        bodyAnimator = source;
+        cameraTransform = camera.transform;
+        controller = weapons.GetComponent<CharacterController>();
+        root = Object.Instantiate(source.gameObject);
+        root.name = "FirstPersonAnimatedArms";
+        root.transform.SetParent(cameraTransform, false);
+        root.transform.localPosition = Vector3.zero;
+        root.transform.localRotation = Quaternion.identity;
+        root.transform.localScale = Vector3.one * 1.15f;
+        Map(source.transform, root.transform);
+        animator = root.GetComponent<Animator>();
+        foreach (var script in root.GetComponentsInChildren<MonoBehaviour>(true)) script.enabled = false;
+        foreach (var other in root.GetComponentsInChildren<Animator>(true)) other.enabled = false;
+        foreach (var collider in root.GetComponentsInChildren<Collider>(true))
+        { collider.enabled = false; Object.Destroy(collider); }
+        foreach (var body in root.GetComponentsInChildren<Rigidbody>(true)) Object.Destroy(body);
+        foreach (var particles in root.GetComponentsInChildren<ParticleSystem>(true))
         {
-            if (combatRig != null) Destroy(combatRig.gameObject);
-            sourceRoot = visualRoot;
-            CreateViewRig(visualRoot, viewModelLayer);
+            if (particles.name.Contains("Bubble") || particles.name.Contains("Spark") || particles.name.Contains("Fuse")) continue;
+            particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            Object.Destroy(particles);
         }
-
-        SetLayerRecursive(visualRoot, 0);
-        SetRenderersEnabled(visualRoot, false);
-        Animator sourceAnimator = visualRoot.GetComponent<Animator>();
-        if (sourceAnimator != null) sourceAnimator.enabled = false;
-        PlayerMotor motor = player != null ? player.GetComponent<PlayerMotor>() : null;
-        if (motor != null) motor.GetComponent<FemaleAnimationDriver>()?.Configure(animator);
-    }
-
-    public void Kick(float amount = 1f) => kick = Mathf.Clamp01(kick + amount);
-
-    private void CreateViewRig(Transform visualRoot, int viewModelLayer)
-    {
-        GameObject clone = Instantiate(visualRoot.gameObject, transform);
-        clone.name = "FemaleCombatRig";
-        combatRig = clone.transform;
-        combatRig.localPosition = new Vector3(0.10f, -1.30f, -0.02f);
-        combatRig.localRotation = Quaternion.Euler(4f, 0f, 0f);
-        combatRig.localScale = Vector3.one;
-
-        animator = clone.GetComponent<Animator>();
-        if (animator != null)
+        foreach (var light in root.GetComponentsInChildren<Light>(true)) { light.enabled = false; Object.Destroy(light); }
+        foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
         {
-            RuntimeAnimatorController fpController = Resources.Load<RuntimeAnimatorController>("FemaleFirstPerson");
-            if (fpController != null) animator.runtimeAnimatorController = fpController;
-            animator.applyRootMotion = false;
-            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-            animator.enabled = true;
-        }
-
-        ConfigureViewRenderers(combatRig);
-        ApplyClippedArmMeshes(combatRig);
-        SetLayerRecursive(combatRig, viewModelLayer);
-        BindBones();
-        SetupMeleeMotionAnimator();
-        BuildHandCaps(combatRig, viewModelLayer);
-    }
-
-    private static void ConfigureViewRenderers(Transform root)
-    {
-        foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
-        {
-            string name = renderer.name;
-            bool isArmOrWeapon = name == "Body01" || name == "Body02" || IsWeaponTransform(renderer.transform);
-            renderer.enabled = isArmOrWeapon;
+            renderer.enabled = false;
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
-            if (renderer is SkinnedMeshRenderer skinned)
+        }
+        foreach (var skin in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+        {
+            var mesh = Resources.Load<Mesh>("FemaleFirstPerson" + skin.name);
+            if (mesh == null) continue;
+            skin.sharedMesh = mesh; skin.enabled = true; skin.updateWhenOffscreen = true;
+            skin.localBounds = new Bounds(Vector3.zero, Vector3.one * 6f);
+        }
+        animator.runtimeAnimatorController = Resources.Load<RuntimeAnimatorController>("FemaleFirstPerson");
+        if (animator.runtimeAnimatorController == null)
+            throw new InvalidOperationException("Build Female first-person meshes and Animator in the GunQuest menu first.");
+        animator.applyRootMotion = false;
+        animator.keepAnimatorStateOnDisable = true;
+        animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        animator.enabled = false;
+        animator.Rebind(); animator.Update(0);
+        for (int i = 0; i < 2; i++)
+        {
+            upper[i] = animator.GetBoneTransform(i == 0 ? HumanBodyBones.LeftUpperArm : HumanBodyBones.RightUpperArm);
+            lower[i] = animator.GetBoneTransform(i == 0 ? HumanBodyBones.LeftLowerArm : HumanBodyBones.RightLowerArm);
+            hand[i] = animator.GetBoneTransform(i == 0 ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
+            upperRest[i] = upper[i].localPosition;
+        }
+        var motion = new GameObject("FirstPersonMeleeMotion");
+        motion.transform.SetParent(root.transform, false);
+        meleePose = new GameObject("Pose").transform;
+        meleePose.SetParent(motion.transform, false);
+        meleeAnimator = motion.AddComponent<Animator>();
+        meleeAnimator.runtimeAnimatorController = Resources.Load<RuntimeAnimatorController>("FemaleMelee/MeleeMotion");
+        meleeAnimator.applyRootMotion = false;
+        meleeAnimator.keepAnimatorStateOnDisable = true;
+        meleeAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        meleeAnimator.enabled = false;
+        if (meleeAnimator.runtimeAnimatorController != null) { meleeAnimator.Rebind(); meleeAnimator.Update(0); }
+        previousAngles = cameraTransform.eulerAngles;
+        wasGrounded = controller != null && controller.isGrounded;
+        SetWeapon();
+        SetLayerRecursively(root, 6);
+    }
+
+    private void Map(Transform original, Transform copy)
+    {
+        copies.Add(original, copy);
+        for (int i = 0; i < original.childCount; i++) Map(original.GetChild(i), copy.GetChild(i));
+    }
+
+    public void SetWeapon()
+    {
+        if (weapons.Current == null) return;
+        foreach (var pair in copies)
+        {
+            if (pair.Key == bodyAnimator.transform || pair.Key == null || pair.Value == null) continue;
+            pair.Value.gameObject.SetActive(pair.Key.gameObject.activeSelf);
+            foreach (var renderer in pair.Value.GetComponents<MeshRenderer>()) renderer.enabled = false;
+        }
+        foreach (var ps in root.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+        copies.TryGetValue(weapons.Current.model.transform, out model);
+        if (model != null)
+        {
+            foreach (var renderer in model.GetComponentsInChildren<MeshRenderer>(true)) renderer.enabled = true;
+            foreach (var ps in model.GetComponentsInChildren<ParticleSystem>(true))
             {
-                skinned.updateWhenOffscreen = true;
-                skinned.localBounds = new Bounds(Vector3.zero, Vector3.one * 4f);
+                ps.gameObject.SetActive(true);
+                ps.Play();
+            }
+            model.localScale = Vector3.one * (weapons.Current.melee ? .65f : weapons.Current.automatic ? .9f : 1f);
+        }
+        muzzle = null;
+        if (weapons.Current.muzzle != null) copies.TryGetValue(weapons.Current.muzzle, out muzzle);
+        if (muzzle == null) muzzle = model;
+        root.SetActive(true);
+        bool rifle = weapons.Current.automatic;
+        animator.ResetTrigger("Reload"); animator.ResetTrigger("Shoot");
+        animator.SetBool("IsRifle", rifle);
+        bool isItem = weapons.Current != null && (weapons.Current.kind == SlotKind.Consumable || weapons.Current.kind == SlotKind.Throwable);
+        animator.SetBool("IsMeleeWeapon", weapons.Current.melee || isItem);
+        animator.SetFloat("ReloadRate", 1f);
+        for (int i = 0; i < 2; i++) upper[i].localPosition = upperRest[i];
+        animator.Play(rifle ? "ReadyAR" : "ReadyHG", 0, 0);
+        animator.Update(0);
+        for (int i = 0; i < 2; i++)
+        {
+            readyHand[i] = root.transform.InverseTransformPoint(hand[i].position);
+            readyRotation[i] = Quaternion.Inverse(root.transform.rotation) * hand[i].rotation;
+        }
+        // Calibrate in this stance; subsequent wrist/finger motion remains animated.
+        gripRotation = Quaternion.Inverse(readyRotation[1]);
+        Transform nativeGrip = null;
+        string reference = rifle ? "AssaultRiflePBR" : "PistolPBR";
+        foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            if (t.name == reference) { nativeGrip = t; break; }
+        if (nativeGrip != null && model != null && !weapons.Current.melee && !isItem)
+        {
+            model.localPosition = hand[1].InverseTransformPoint(nativeGrip.position);
+            gripRotation = Quaternion.Inverse(hand[1].rotation) * nativeGrip.rotation;
+        }
+        wristCorrection = Quaternion.Inverse(gripRotation) * Quaternion.Inverse(readyRotation[1]);
+        supportGrip = Quaternion.Inverse(readyRotation[1]) * (readyHand[0] - readyHand[1]);
+        if (model != null && !weapons.Current.melee && !isItem) model.localRotation = gripRotation;
+        meleeState = "Idle";
+        SampleMelee(0f);
+        meleeAnimator.transform.localPosition = Vector3.zero;
+        if (model != null && weapons.Current.melee)
+        {
+            model.SetParent(hand[1], false);
+            model.localPosition = new Vector3(0.06f, -0.04f, 0.00f);
+            var baseGripRot = Quaternion.Euler(0.15f, 89.79f, 89.79f);
+            gripRotation = baseGripRot;
+            model.localRotation = gripRotation;
+            model.localScale = Vector3.one * 0.60f;
+        }
+        else if (model != null && isItem)
+        {
+            model.SetParent(hand[1], false);
+            if (weapons.Current.kind == SlotKind.Consumable)
+            {
+                // Health Potion: held cleanly in palm upright, tilted slightly inward
+                model.localPosition = new Vector3(0.04f, -0.04f, 0.015f);
+                gripRotation = Quaternion.Euler(5f, 80f, 85f);
+                model.localRotation = gripRotation;
+                model.localScale = Vector3.one * 1.05f;
+            }
+            else
+            {
+                // Bomb / Grenade: held in palm
+                model.localPosition = new Vector3(0.04f, -0.035f, 0.015f);
+                gripRotation = Quaternion.Euler(0f, 85f, 90f);
+                model.localRotation = gripRotation;
+                model.localScale = Vector3.one * 1.1f;
             }
         }
+        SetLayerRecursively(root, 6);
+        wasReloading = false; reloadBlend = 0; equipDrop = 1f;
+        recoil = recoilVelocity = Vector3.zero;
     }
 
-    private void ApplyClippedArmMeshes(Transform root)
+    public void PlayAttack()
     {
-        Mesh body01Mesh = Resources.Load<Mesh>(Body01ClipResourcePath);
-        Mesh body02Mesh = Resources.Load<Mesh>(Body02ClipResourcePath);
-        Material sleeveMaterial = Resources.Load<Material>(SleeveResourcePath);
-        SkinnedMeshRenderer body01 = root.Find("Body01")?.GetComponent<SkinnedMeshRenderer>();
-        SkinnedMeshRenderer body02 = root.Find("Body02")?.GetComponent<SkinnedMeshRenderer>();
-        body02Bones = body02 != null ? body02.bones : null;
-
-        if (body01 != null && body01Mesh != null) body01.sharedMesh = body01Mesh;
-        if (body02 != null && body02Mesh != null)
+        if (weapons.Current == null) return;
+        bool isItem = weapons.Current.kind == SlotKind.Consumable || weapons.Current.kind == SlotKind.Throwable;
+        if (isItem)
         {
-            body02.sharedMesh = body02Mesh;
-            if (sleeveMaterial != null) body02.sharedMaterial = sleeveMaterial;
+            if (weapons.Current.kind == SlotKind.Consumable)
+            {
+                recoil += new Vector3(2.4f, 0.5f, 0.04f);
+                BeginMelee("BatSwing", MeleeAttackTiming.Quick);
+            }
+            else
+            {
+                recoil += new Vector3(3.2f, -0.8f, 0.06f);
+                BeginMelee("BatSwing", MeleeAttackTiming.ForWeapon(false));
+            }
         }
-        else if (body01 != null)
+        else if (!weapons.Current.melee)
         {
-            body01.enabled = false;
+            animator.SetTrigger("Shoot");
+            recoil += new Vector3(weapons.Current.automatic ? 1.1f : 2.6f, .12f, weapons.Current.automatic ? .015f : .035f);
+            recoil.x = Mathf.Min(recoil.x, 6f); recoil.z = Mathf.Min(recoil.z, .075f);
         }
-    }
-
-    private static bool IsWeaponTransform(Transform item)
-    {
-        for (Transform current = item; current != null; current = current.parent)
-            if (current.name == "FirstPersonWeapons" || current.name == "Weapon_R") return true;
-        return false;
-    }
-
-    private void BindBones()
-    {
-        clavicleL = FindBone("clavicle_l"); upperArmL = FindBone("upperarm_l");
-        lowerArmL = FindBone("lowerarm_l"); handL = FindBone("hand_l");
-        clavicleR = FindBone("clavicle_r"); upperArmR = FindBone("upperarm_r");
-        lowerArmR = FindBone("lowerarm_r"); handR = FindBone("hand_r");
-        weaponRoot = FindBone("FirstPersonWeapons") ?? FindBone("Weapon_R");
-        pistol = FindWeapon("PistolView", "Pistol");
-        rifle = FindWeapon("RifleView", "AssaultRifle");
-        bat = FindWeapon("BatView", "BaseBallBat");
-        potion = FindWeapon("PotionView", "HealthPotion");
-        grenade = FindWeapon("GrenadeView", "FragGrenade");
-        allWeapons = new[] { pistol, rifle, bat, potion, grenade };
-        bound = clavicleL != null && upperArmL != null && lowerArmL != null && handL != null &&
-                clavicleR != null && upperArmR != null && lowerArmR != null && handR != null;
-    }
-
-    private void SetupMeleeMotionAnimator()
-    {
-        if (combatRig == null) return;
-        Transform existing = combatRig.Find("MeleeMotionDriver");
-        GameObject driverObj = existing != null ? existing.gameObject : new GameObject("MeleeMotionDriver");
-        meleeMotionDriver = driverObj.transform;
-        meleeMotionDriver.SetParent(combatRig, false);
-        meleeMotionDriver.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-        meleeMotionDriver.localScale = Vector3.one;
-
-        meleeMotionAnimator = driverObj.GetComponent<Animator>();
-        if (meleeMotionAnimator == null) meleeMotionAnimator = driverObj.AddComponent<Animator>();
-        meleeMotionAnimator.runtimeAnimatorController = Resources.Load<RuntimeAnimatorController>(MeleeControllerResourcePath);
-        meleeMotionAnimator.applyRootMotion = false;
-        meleeMotionAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-    }
-
-    private void BindWeapons(PlayerWeapons targetWeapons)
-    {
-        if (weapons == targetWeapons) return;
-        UnbindWeapons();
-        weapons = targetWeapons;
-        if (weapons == null) return;
-        weapons.Attacked += OnWeaponAttacked;
-        weapons.QuickMeleeStarted += OnQuickMeleeStarted;
-    }
-
-    private void UnbindWeapons()
-    {
-        if (weapons == null) return;
-        weapons.Attacked -= OnWeaponAttacked;
-        weapons.QuickMeleeStarted -= OnQuickMeleeStarted;
-        weapons = null;
-    }
-
-    private void OnDestroy() => UnbindWeapons();
-
-    private void OnWeaponAttacked()
-    {
-        if (weapons != null && weapons.Current != null && weapons.Current.melee)
-            TriggerMeleeMotion(MeleeBatTrigger);
-    }
-
-    private void OnQuickMeleeStarted() => TriggerMeleeMotion(MeleeQuickTrigger);
-
-    private void TriggerMeleeMotion(int triggerHash)
-    {
-        if (meleeMotionAnimator == null || meleeMotionAnimator.runtimeAnimatorController == null) return;
-        meleeMotionAnimator.ResetTrigger(MeleeBatTrigger);
-        meleeMotionAnimator.ResetTrigger(MeleeQuickTrigger);
-        meleeMotionAnimator.SetBool(MeleeActiveBool, true);
-        meleeMotionAnimator.SetTrigger(triggerHash);
-    }
-
-    private void LateUpdate()
-    {
-        if (!bound || combatRig == null) return;
-        SyncActiveWeaponModel();
-
-        Vector3 velocity = controller != null ? controller.velocity : Vector3.zero;
-        velocity.y = 0f;
-        float speed = velocity.magnitude;
-        if (speed > 0.1f) bobTime += Time.deltaTime * Mathf.Lerp(6f, 11f, Mathf.Clamp01(speed / 8f));
-
-        float bobX = Mathf.Sin(bobTime) * 0.012f * Mathf.Clamp01(speed / 5f);
-        float bobY = Mathf.Abs(Mathf.Cos(bobTime)) * 0.010f * Mathf.Clamp01(speed / 5f);
-        kick = Mathf.MoveTowards(kick, 0f, 10f * Time.deltaTime);
-
-        bool meleeEquipped = weapons != null && weapons.Current != null && weapons.Current.melee;
-        bool meleeSwinging = weapons != null && weapons.IsMeleeAttacking;
-        bool meleeMode = meleeEquipped || meleeSwinging;
-        if (meleeMotionAnimator != null && meleeMotionAnimator.runtimeAnimatorController != null)
-            meleeMotionAnimator.SetBool(MeleeActiveBool, meleeSwinging);
-
-        Vector3 motionPos = meleeMotionDriver != null && meleeSwinging ? meleeMotionDriver.localPosition : Vector3.zero;
-        Quaternion motionRot = meleeMotionDriver != null && meleeSwinging ? meleeMotionDriver.localRotation : Quaternion.identity;
-
-        Vector3 basePos = meleeMode ? new Vector3(0.08f, -1.33f, 0.02f) : new Vector3(0.10f, -1.30f, -0.02f);
-        Quaternion baseRot = meleeMode ? Quaternion.Euler(7f, -6f, 2f) : Quaternion.Euler(4f, 0f, 0f);
-        combatRig.localPosition = basePos + new Vector3(bobX, -bobY, -kick * 0.05f) + motionPos;
-        combatRig.localRotation = Quaternion.Euler(-kick * 7f, 0f, 0f) * baseRot * motionRot;
-
-        HideBodyWaitForArmsOnly();
-        PoseEquippedWeapon();
-    }
-
-    private void HideBodyWaitForArmsOnly()
-    {
-        if (body02Bones == null) return;
-        int count = Mathf.Min(body02Bones.Length, ClippedHoldBones.Length);
-        for (int i = 0; i < count; i++)
-            if (body02Bones[i] != null) body02Bones[i].localScale = ClippedHoldBones[i];
-    }
-
-    private void SyncActiveWeaponModel()
-    {
-        if (weapons == null || weapons.Current == null) return;
-        Transform active = GetActiveWeaponView();
-        if (active == null) return;
-        foreach (Transform candidate in allWeapons)
-            if (candidate != null) candidate.gameObject.SetActive(candidate == active);
-    }
-
-    private Transform GetActiveWeaponView()
-    {
-        string label = weapons != null && weapons.Current != null && weapons.Current.label != null
-            ? weapons.Current.label.ToLowerInvariant()
-            : string.Empty;
-        var kind = weapons != null ? weapons.CurrentKind : SlotKind.Gun;
-        if (kind == SlotKind.Consumable || label.Contains("bình") || label.Contains("máu") || label.Contains("potion")) return potion;
-        if (kind == SlotKind.Throwable || label.Contains("lựu") || label.Contains("bom") || label.Contains("grenade")) return grenade;
-        if (weapons != null && weapons.Current != null && weapons.Current.melee) return bat;
-        if (weapons != null && weapons.Current != null && weapons.Current.automatic) return rifle != null ? rifle : pistol;
-        return pistol != null ? pistol : rifle;
-    }
-
-    private void PoseEquippedWeapon()
-    {
-        if (weaponRoot != null)
+        else
         {
-            weaponRoot.localPosition = new Vector3(-0.02f, 0.04f, 0.02f);
-            weaponRoot.localRotation = Quaternion.identity;
-            weaponRoot.localScale = Vector3.one;
-        }
-        if (pistol != null && pistol.gameObject.activeSelf)
-        {
-            pistol.localPosition = new Vector3(0.02f, 0.03f, 0.07f);
-            pistol.localRotation = Quaternion.Euler(0f, 92f, 90f);
-            pistol.localScale = Vector3.one * 0.88f;
-        }
-        if (rifle != null && rifle.gameObject.activeSelf)
-        {
-            rifle.localPosition = new Vector3(0.03f, 0.02f, 0.14f);
-            rifle.localRotation = Quaternion.Euler(0f, 92f, 88f);
-            rifle.localScale = Vector3.one * 0.72f;
-        }
-        if (bat != null && bat.gameObject.activeSelf)
-        {
-            bat.localPosition = new Vector3(0.03f, 0.05f, 0.06f);
-            bat.localRotation = Quaternion.Euler(-74f, 96f, 88f);
-            bat.localScale = Vector3.one * 0.78f;
-        }
-        if (potion != null && potion.gameObject.activeSelf)
-        {
-            potion.localPosition = new Vector3(0.02f, 0.04f, 0.06f);
-            potion.localRotation = Quaternion.Euler(10f, 180f, 80f);
-            potion.localScale = Vector3.one * 0.95f;
-        }
-        if (grenade != null && grenade.gameObject.activeSelf)
-        {
-            grenade.localPosition = new Vector3(0.02f, 0.04f, 0.06f);
-            grenade.localRotation = Quaternion.Euler(10f, 180f, 80f);
-            grenade.localScale = Vector3.one * 1.05f;
+            recoil += new Vector3(0.6f, -1.2f, 0.02f);
+            BeginMelee("BatSwing", weapons.CurrentMeleeTiming);
         }
     }
 
-    private static void BuildHandCaps(Transform rigRoot, int layer)
+    public void PlayQuickMelee()
     {
-        Material sleeveMaterial = Resources.Load<Material>(SleeveResourcePath);
-        if (sleeveMaterial == null) return;
-        foreach (string boneName in new[] { "lowerarm_l", "lowerarm_r" })
+        recoil += new Vector3(0.8f, -0.6f, 0.02f);
+        BeginMelee("QuickSwing", MeleeAttackTiming.Quick);
+    }
+
+    private void BeginMelee(string state, MeleeAttackTiming timing)
+    {
+        meleeState = state; meleeTiming = timing;
+        SampleMelee(0f);
+    }
+
+    private void SampleMelee(float normalizedTime)
+    {
+        if (meleeAnimator == null || meleeAnimator.runtimeAnimatorController == null) return;
+        meleeAnimator.Play(meleeState, 0, Mathf.Clamp01(normalizedTime));
+        meleeAnimator.Update(0f);
+    }
+
+    private void UpdateMeleeMotion()
+    {
+        if (melee == null || !melee.IsAttacking) meleeState = "Idle";
+        SampleMelee(meleeState == "Idle" ? 0f : melee.AttackElapsed / meleeTiming.Duration);
+    }
+
+    private void PoseMeleeHands()
+    {
+        if (model == null) return;
+        // The weapon is animated independently; both genuine Female hands follow
+        // grip points on its handle, with elbow hints below the camera.
+        Quaternion rightRotation = model.rotation * readyRotation[1];
+        Quaternion leftRotation = model.rotation * readyRotation[0];
+        Vector3 right = root.transform.InverseTransformPoint(model.TransformPoint(new Vector3(0f, -.06f, 0f)));
+        Vector3 left = root.transform.InverseTransformPoint(model.TransformPoint(new Vector3(0f, .15f, 0f)));
+        Solve(1, new Vector3(.34f, -.48f, .12f), right, rightRotation, new Vector3(.65f, -1.2f, .2f));
+        Solve(0, new Vector3(-.06f, -.45f, .48f), left, leftRotation, new Vector3(-.25f, -1.5f, .12f));
+    }
+    public void UpdatePose(Vector3 framingAdjustment, bool aiming)
+    {
+        if (root == null || animator == null || weapons.Current == null) return;
+        bool playing = ContractGame.ControlsAllowed;
+        root.SetActive(playing);
+        if (!playing) { previousAngles = cameraTransform.eulerAngles; return; }
+        float dt = Mathf.Min(Time.deltaTime, .05f);
+        if (dt <= 0) return;
+        bool reloading = weapons.IsReloading;
+        if (reloading && !wasReloading) { animator.ResetTrigger("Shoot"); animator.SetTrigger("Reload"); }
+        if (!reloading && wasReloading)
         {
-            Transform bone = FindBoneIn(rigRoot, boneName);
-            if (bone == null || bone.Find("SleeveCuff") != null) continue;
-            GameObject cuff = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            cuff.name = "SleeveCuff";
-            Destroy(cuff.GetComponent<Collider>());
-            cuff.layer = layer;
-            cuff.transform.SetParent(bone, false);
-            cuff.transform.localPosition = new Vector3(0.18f, 0f, 0f);
-            cuff.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
-            cuff.transform.localScale = new Vector3(0.065f, 0.03f, 0.065f);
-            Renderer r = cuff.GetComponent<Renderer>();
-            r.sharedMaterial = sleeveMaterial;
-            r.shadowCastingMode = ShadowCastingMode.Off;
-            r.receiveShadows = false;
+            animator.ResetTrigger("Reload");
+            animator.CrossFadeInFixedTime(weapons.Current.automatic ? "ReadyAR" : "ReadyHG", .12f);
         }
-    }
-
-    private Transform FindBone(string boneName) => FindBoneIn(combatRig, boneName);
-
-    private Transform FindWeapon(string primary, string fallback)
-    {
-        if (weaponRoot != null)
+        wasReloading = reloading;
+        for (int i = 0; i < 2; i++) upper[i].localPosition = upperRest[i];
+        animator.Update(Time.deltaTime);
+        reloadBlend = Mathf.MoveTowards(reloadBlend, reloading ? 1f : 0f, dt * 12f);
+        float speed = controller != null ? Vector3.ProjectOnPlane(controller.velocity, Vector3.up).magnitude : 0;
+        movement = Mathf.Lerp(movement, Mathf.Clamp01(speed / 5f), 1f - Mathf.Exp(-10f * dt));
+        bool running = bodyAnimator != null && bodyAnimator.GetBool("IsSprinting") && speed > 1f && !reloading;
+        sprint = Mathf.Lerp(sprint, running ? 1f : 0f, 1f - Mathf.Exp(-9f * dt));
+        aim = Mathf.Lerp(aim, aiming && !reloading && !running && !weapons.Current.melee ? 1f : 0f, 1f - Mathf.Exp(-14f * dt));
+        equipDrop = Mathf.MoveTowards(equipDrop, 0, dt * 5f);
+        recoil = Vector3.SmoothDamp(recoil, Vector3.zero, ref recoilVelocity, .085f, Mathf.Infinity, dt);
+        Vector3 angles = cameraTransform.eulerAngles;
+        Vector3 mouse = new Vector3(Mathf.DeltaAngle(previousAngles.x, angles.x), Mathf.DeltaAngle(previousAngles.y, angles.y), 0);
+        previousAngles = angles;
+        Vector3 swayTarget = new Vector3(Mathf.Clamp(mouse.x / Mathf.Max(Time.deltaTime, .001f) * -.009f, -2f, 2f), Mathf.Clamp(mouse.y / Mathf.Max(Time.deltaTime, .001f) * -.009f, -2f, 2f), Mathf.Clamp(mouse.y / Mathf.Max(Time.deltaTime, .001f) * -.004f, -1f, 1f));
+        sway = Vector3.SmoothDamp(sway, swayTarget, ref swayVelocity, .07f, Mathf.Infinity, dt);
+        bool grounded = controller != null && controller.isGrounded;
+        if (grounded && !wasGrounded) landing = -.035f;
+        wasGrounded = grounded;
+        landing = Mathf.SmoothDamp(landing, 0, ref landingVelocity, .12f, Mathf.Infinity, dt);
+        stepPhase += dt * (running ? 12f : 8f) * movement;
+        Vector3 bob = new Vector3(Mathf.Sin(stepPhase) * .005f, Mathf.Cos(stepPhase * 2f) * .005f, 0) * movement * (1f - aim * .8f);
+        bob.y += Mathf.Sin(Time.time * 1.7f) * .0015f + landing - equipDrop * .20f - sprint * .08f;
+        bob.z -= recoil.z;
+        float targetPullback = 0f;
+        int worldMask = ~((1 << 6) | (1 << 2));
+        if (Physics.SphereCast(cameraTransform.position, 0.16f, cameraTransform.forward, out RaycastHit hit, 0.85f, worldMask, QueryTriggerInteraction.Ignore))
         {
-            Transform direct = weaponRoot.Find(primary) ?? weaponRoot.Find(fallback);
-            if (direct != null) return direct;
+            targetPullback = Mathf.Clamp01((0.85f - hit.distance) / 0.85f);
         }
-        return FindBone(primary) ?? FindBone(fallback);
+        wallPullback = Mathf.SmoothDamp(wallPullback, targetPullback, ref wallPullbackVelocity, 0.08f, Mathf.Infinity, dt);
+        Vector3 wallOffset = new Vector3(0f, -wallPullback * 0.10f, -wallPullback * 0.26f);
+        Vector3 wallAngles = new Vector3(wallPullback * 14f, -wallPullback * 4f, 0f);
+        // Existing saved offset remains a small trim, relative to its legacy default.
+        root.transform.localPosition = new Vector3(0, -.08f, .15f) + bob + framingAdjustment - new Vector3(-.1f, -.8f, .55f) + wallOffset;
+        root.transform.localRotation = Quaternion.Euler(sway + new Vector3(-recoil.x + sprint * 13f + equipDrop * 12f, recoil.y, -sprint * 8f) + wallAngles);
+        UpdateMeleeMotion();
+        if (meleeState != "Idle" && meleePose != null)
+        {
+            root.transform.localPosition += meleePose.localPosition;
+            root.transform.localRotation *= meleePose.localRotation;
+        }
+        bool isItem = weapons.Current != null && (weapons.Current.kind == SlotKind.Consumable || weapons.Current.kind == SlotKind.Throwable);
+        for (int i = 0; i < 2; i++)
+        {
+            upper[i].localPosition = upperRest[i];
+            animatedDelta[i] = root.transform.InverseTransformPoint(hand[i].position) - readyHand[i];
+            animatedRotation[i] = (weapons.Current.melee || isItem) ? hand[i].rotation : root.transform.rotation * wristCorrection * Quaternion.Inverse(root.transform.rotation) * hand[i].rotation;
+        }
+        Vector3 wrist = Vector3.Lerp(new Vector3(.23f, -.23f, .51f), new Vector3(.015f, -.15f, .55f), aim);
+        if (weapons.Current.automatic) wrist += new Vector3(.015f, -.015f, -.035f);
+        if (weapons.Current.melee) wrist = new Vector3(.24f, -.26f, .48f);
+        if (isItem) wrist = new Vector3(.24f, -.24f, .44f);
+        Solve(1, Vector3.Lerp(new Vector3(.36f, -.44f, .12f), new Vector3(.22f, -.34f, .19f), aim), wrist + animatedDelta[1] * 1.15f, animatedRotation[1], new Vector3(.65f, -1f, .25f));
+        if (model != null) model.localRotation = gripRotation;
+        // A stance-specific support target follows the gun. The reload clip takes
+        // over continuously as the support hand leaves the grip.
+        Vector3 support = root.transform.InverseTransformPoint(hand[1].TransformPoint(supportGrip));
+        if (weapons.Current.automatic && model != null)
+            support = root.transform.InverseTransformPoint(model.TransformPoint(new Vector3(-.07f, -.035f, .16f)));
+        Vector3 animatedLeft = new Vector3(-.08f, -.24f, .55f) + animatedDelta[0] * 1.15f;
+        if (weapons.Current.melee || isItem) animatedLeft = new Vector3(-.24f, -.50f, .28f);
+        Vector3 leftGoal = Vector3.Lerp(support, animatedLeft, (weapons.Current.melee || isItem) ? 1f : reloadBlend);
+        Solve(0, new Vector3(-.10f, -.45f, .48f), leftGoal, animatedRotation[0], new Vector3(-.10f, -1.6f, 0f));
     }
 
-    private static Transform FindBoneIn(Transform root, string boneName)
+    private void Solve(int side, Vector3 shoulder, Vector3 wrist, Quaternion wristRotation, Vector3 hint)
     {
-        if (root == null) return null;
-        foreach (Transform item in root.GetComponentsInChildren<Transform>(true))
-            if (item.name == boneName) return item;
-        return null;
+        var a = upper[side]; var b = lower[side]; var c = hand[side];
+        a.position = root.transform.TransformPoint(shoulder);
+        Vector3 goal = root.transform.TransformPoint(wrist);
+        Vector3 pole = root.transform.TransformPoint(hint);
+        float first = Vector3.Distance(a.position, b.position), second = Vector3.Distance(b.position, c.position);
+        Vector3 toGoal = goal - a.position;
+        float distance = Mathf.Clamp(toGoal.magnitude, Mathf.Abs(first-second)+.001f, (first+second)*.985f);
+        Vector3 direction = toGoal.sqrMagnitude > .000001f ? toGoal.normalized : root.transform.forward;
+        goal = a.position + direction * distance;
+        Vector3 bend = Vector3.ProjectOnPlane(pole-a.position, direction).normalized;
+        if (bend.sqrMagnitude < .001f) bend = Vector3.ProjectOnPlane(-root.transform.up, direction).normalized;
+        float along = (first*first + distance*distance - second*second)/(2f*distance);
+        Vector3 elbow = a.position + direction*along + bend*Mathf.Sqrt(Mathf.Max(0,first*first-along*along));
+        a.rotation = Quaternion.FromToRotation(b.position-a.position, elbow-a.position) * a.rotation;
+        b.rotation = Quaternion.FromToRotation(c.position-b.position, goal-b.position) * b.rotation;
+        c.rotation = wristRotation;
     }
 
-    private static void SetRenderersEnabled(Transform root, bool enabled)
+    public static void SetLayerRecursively(GameObject obj, int layer)
     {
-        foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
-            renderer.enabled = enabled;
+        if (obj == null) return;
+        obj.layer = layer;
+        var t = obj.transform;
+        for (int i = 0; i < t.childCount; i++)
+            SetLayerRecursively(t.GetChild(i).gameObject, layer);
     }
 
-    private static void SetLayerRecursive(Transform root, int layer)
+    public void Dispose()
     {
-        foreach (Transform item in root.GetComponentsInChildren<Transform>(true))
-            item.gameObject.layer = layer;
+        if (root != null) Object.Destroy(root);
     }
 }
